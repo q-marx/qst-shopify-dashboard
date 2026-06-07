@@ -95,7 +95,7 @@ Recommended Render settings:
 - Web service: `qst-shopify-dashboard`
 - Runtime: Node
 - Region: Frankfurt
-- Build command: `npm ci && npm run build`
+- Build command: `npm ci --include=dev && npm run build`
 - Start command: `npm start`
 - Health check path: `/api/health`
 - Database: PostgreSQL, linked through `DATABASE_URL`
