@@ -6,6 +6,7 @@
 - Production server binding for Render's `PORT`.
 - `/api/health` health check.
 - Optional Postgres persistence for pairing codes and event logs through `DATABASE_URL`.
+- Frankfurt web service and Frankfurt Postgres database so Render's internal database URL resolves correctly.
 - Production-safe secrets in the Blueprint with `sync: false`.
 
 ## Required source setup
@@ -78,8 +79,13 @@ Check:
 - product list loads
 - subscription status still shows `Active`
 - `Generate code` creates a desktop pairing code
+- `/api/health` reports `"storage": "postgres"` and `"storageReady": true`
 - CSV and listing pack downloads still work
 - no Render logs show webhook or token verification errors
+
+If `/api/health` reports a `getaddrinfo ENOTFOUND` storage error, check that the Blueprint is using
+`qst-shopify-dashboard-db-frankfurt`. Render cannot move an existing database between regions, so the
+production service must use the Frankfurt database created by the current Blueprint.
 
 ## Before Shopify submission
 

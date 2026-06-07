@@ -98,7 +98,7 @@ Recommended Render settings:
 - Build command: `npm ci --include=dev && npm run build`
 - Start command: `npm start`
 - Health check path: `/api/health`
-- Database: PostgreSQL, linked through `DATABASE_URL`
+- Database: PostgreSQL in Frankfurt, linked through `DATABASE_URL`
 
 Render will ask for these secret or deployment-specific values:
 
