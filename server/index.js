@@ -49,13 +49,13 @@ for (const route of webhookPaths) {
 app.use(express.json({ limit: "512kb" }));
 
 app.get("/api/health", (_request, response) => {
+  const storage = storageHealth();
+
   response.json({
     ok: true,
     app: "QST Listing Workspace",
     mode: isProduction ? "production" : "development",
-    storage: db ? (dbReady ? "postgres" : "initializing") : "memory",
-    storageReady: !db || dbReady,
-    storageError: dbInitError || null,
+    ...storage,
     time: new Date().toISOString()
   });
 });
@@ -456,6 +456,45 @@ async function initializeStorage() {
       details jsonb not null default '{}'::jsonb
     )
   `);
+}
+
+function storageHealth() {
+  if (!db) {
+    return {
+      storage: "memory",
+      storageReady: true,
+      postgresReady: false,
+      fallbackActive: false,
+      retrying: false,
+      storagePersistence: "ephemeral",
+      storageWarning: null,
+      storageError: null
+    };
+  }
+
+  if (dbReady) {
+    return {
+      storage: "postgres",
+      storageReady: true,
+      postgresReady: true,
+      fallbackActive: false,
+      retrying: false,
+      storagePersistence: "durable",
+      storageWarning: null,
+      storageError: null
+    };
+  }
+
+  return {
+    storage: "memory_fallback",
+    storageReady: true,
+    postgresReady: false,
+    fallbackActive: true,
+    retrying: true,
+    storagePersistence: "ephemeral",
+    storageWarning: "Postgres is not ready; using in-memory pairing codes while initialization retries.",
+    storageError: dbInitError || null
+  };
 }
 
 function startStorageInitialization() {

@@ -83,13 +83,16 @@ Check:
 - product list loads
 - subscription status still shows `Active`
 - `Generate code` creates a desktop pairing code
-- `/api/health` reports `"storage": "postgres"` and `"storageReady": true`
+- `/api/health` reports `"storageReady": true`
+- preferably `/api/health` also reports `"storage": "postgres"` and `"postgresReady": true`
 - CSV and listing pack downloads still work
 - no Render logs show webhook or token verification errors
 
 If `/api/health` reports a `getaddrinfo ENOTFOUND` storage error, check that the Blueprint is using
 `qst-shopify-dashboard-db-frankfurt`. Render cannot move an existing database between regions, so the
-production service must use the Frankfurt database created by the current Blueprint.
+production service must use the Frankfurt database created by the current Blueprint. The app can keep
+running with `"storage": "memory_fallback"` while this is corrected, but pairing codes are ephemeral
+until Postgres is ready.
 
 ## Before Shopify submission
 
