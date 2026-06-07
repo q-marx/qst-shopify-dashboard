@@ -27,6 +27,8 @@ const db = databaseUrl
       ssl: isProduction ? { rejectUnauthorized: false } : undefined
     })
   : null;
+let dbReady = false;
+let dbInitError = "";
 
 const app = express();
 app.disable("x-powered-by");
@@ -50,6 +52,9 @@ app.get("/api/health", (_request, response) => {
     ok: true,
     app: "QST Listing Workspace",
     mode: isProduction ? "production" : "development",
+    storage: db ? (dbReady ? "postgres" : "initializing") : "memory",
+    storageReady: !db || dbReady,
+    storageError: dbInitError || null,
     time: new Date().toISOString()
   });
 });
@@ -178,7 +183,19 @@ if (isProduction) {
   app.use(vite.middlewares);
 }
 
-await initializeStorage();
+initializeStorage()
+  .then(() => {
+    dbReady = Boolean(db);
+    if (dbReady) {
+      console.log("QST storage initialized with Postgres.");
+    } else {
+      console.log("QST storage initialized with in-memory fallback.");
+    }
+  })
+  .catch((error) => {
+    dbInitError = error.message || "Database initialization failed.";
+    console.error("QST storage initialization failed:", dbInitError);
+  });
 
 app.listen(port, host, () => {
   console.log(`QST Shopify dashboard listening at http://${host}:${port}`);
@@ -453,7 +470,7 @@ async function initializeStorage() {
 }
 
 async function savePairingRecord(record) {
-  if (!db) {
+  if (!dbReady) {
     pairingCodes.set(record.code, record);
     return;
   }
@@ -478,7 +495,7 @@ async function getPairingRecord(code) {
   await cleanupExpiredPairingCodes();
   const normalizedCode = normalizePairingCode(code);
 
-  if (!db) {
+  if (!dbReady) {
     return pairingCodes.get(normalizedCode) || null;
   }
 
@@ -505,7 +522,7 @@ async function getPairingRecord(code) {
 }
 
 async function claimPairingRecord(code, desktopTokenHash, claimedAt) {
-  if (!db) {
+  if (!dbReady) {
     const record = pairingCodes.get(code);
     record.status = "claimed";
     record.claimedAt = claimedAt;
@@ -545,7 +562,7 @@ async function claimPairingRecord(code, desktopTokenHash, claimedAt) {
 }
 
 async function clearPairingRecords(shop = "") {
-  if (!db) {
+  if (!dbReady) {
     if (shop) {
       for (const [code, record] of pairingCodes.entries()) {
         if (record.shop === shop) {
@@ -566,7 +583,7 @@ async function clearPairingRecords(shop = "") {
 }
 
 async function cleanupExpiredPairingCodes() {
-  if (db) {
+  if (dbReady) {
     await db.query("delete from qst_pairing_codes where expires_at <= now()");
     return;
   }
@@ -624,7 +641,7 @@ function summarizeWebhookPayload(buffer) {
 }
 
 async function recordEvent(type, details) {
-  if (db) {
+  if (dbReady) {
     await db.query(
       "insert into qst_events (type, details) values ($1, $2::jsonb)",
       [type, JSON.stringify(details)]
