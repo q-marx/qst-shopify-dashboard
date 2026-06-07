@@ -2,7 +2,7 @@
 
 name = "QST Listing Workspace"
 client_id = "f0517dd50928e4546916d0c07b379e87"
-application_url = "https://example.com"
+application_url = "https://qst-shopify-dashboard.onrender.com"
 embedded = true
 
 [build]
@@ -19,7 +19,7 @@ direct_api_mode = "online"
 
 [auth]
 redirect_urls = [
-  "https://example.com/auth/callback"
+  "https://qst-shopify-dashboard.onrender.com/auth/callback"
 ]
 
 [webhooks]
