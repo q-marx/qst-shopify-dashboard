@@ -29,6 +29,10 @@ https://dashboard.render.com/blueprint/new
 
 Connect the repo that contains `render.yaml`, then apply the Blueprint.
 
+If the Blueprint already exists and Render does not auto-sync after a GitHub push, open the Blueprint
+page in Render and click **Manual Sync**. The sync should show a new database named
+`qst-shopify-dashboard-db-frankfurt` and an update to the web service's `DATABASE_URL`.
+
 ## Fill these Render environment values
 
 ```env
