@@ -29,6 +29,7 @@ const db = databaseUrl
   : null;
 let dbReady = false;
 let dbInitError = "";
+let dbInitInProgress = false;
 
 const app = express();
 app.disable("x-powered-by");
@@ -183,19 +184,7 @@ if (isProduction) {
   app.use(vite.middlewares);
 }
 
-initializeStorage()
-  .then(() => {
-    dbReady = Boolean(db);
-    if (dbReady) {
-      console.log("QST storage initialized with Postgres.");
-    } else {
-      console.log("QST storage initialized with in-memory fallback.");
-    }
-  })
-  .catch((error) => {
-    dbInitError = error.message || "Database initialization failed.";
-    console.error("QST storage initialization failed:", dbInitError);
-  });
+startStorageInitialization();
 
 app.listen(port, host, () => {
   console.log(`QST Shopify dashboard listening at http://${host}:${port}`);
@@ -467,6 +456,45 @@ async function initializeStorage() {
       details jsonb not null default '{}'::jsonb
     )
   `);
+}
+
+function startStorageInitialization() {
+  if (!db) {
+    dbReady = false;
+    console.log("QST storage initialized with in-memory fallback.");
+    return;
+  }
+
+  void attemptStorageInitialization();
+  const retryTimer = setInterval(() => {
+    if (dbReady) {
+      clearInterval(retryTimer);
+      return;
+    }
+
+    void attemptStorageInitialization();
+  }, 15000);
+
+  retryTimer.unref?.();
+}
+
+async function attemptStorageInitialization() {
+  if (dbReady || dbInitInProgress) {
+    return;
+  }
+
+  dbInitInProgress = true;
+  try {
+    await initializeStorage();
+    dbReady = true;
+    dbInitError = "";
+    console.log("QST storage initialized with Postgres.");
+  } catch (error) {
+    dbInitError = error.message || "Database initialization failed.";
+    console.error("QST storage initialization failed:", dbInitError);
+  } finally {
+    dbInitInProgress = false;
+  }
 }
 
 async function savePairingRecord(record) {
