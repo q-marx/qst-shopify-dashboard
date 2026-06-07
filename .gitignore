@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/
+.shopify/
+*.log
+.env
+.env.*.local

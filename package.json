@@ -1,0 +1,23 @@
+{
+  "name": "qst-shopify-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "node server/index.js",
+    "frontend:dev": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "preview": "vite preview --host 127.0.0.1 --port 4173"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.21.0"
+  }
+}

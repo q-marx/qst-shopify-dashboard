@@ -1,0 +1,30 @@
+# Replace the placeholder values with the app details from Shopify Partner Dashboard.
+# This config keeps the embedded dashboard useful without the desktop companion.
+
+name = "QST Listing Workspace"
+client_id = "replace_with_shopify_client_id"
+application_url = "https://example.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[access_scopes]
+scopes = "read_products"
+
+[access.admin]
+embedded_app_direct_api_access = true
+direct_api_mode = "online"
+
+[auth]
+redirect_urls = [
+  "https://example.com/auth/callback"
+]
+
+[webhooks]
+api_version = "2026-04"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+compliance_topics = ["customers/redact", "customers/data_request", "shop/redact"]
+uri = "/webhooks"
