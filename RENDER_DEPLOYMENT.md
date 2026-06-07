@@ -78,6 +78,12 @@ https://qst-shopify-dashboard.onrender.com/api/health
 https://admin.shopify.com/store/sst-test-site/apps/qst-listing-workspace
 ```
 
+Or run:
+
+```powershell
+npm run render:health
+```
+
 Check:
 
 - product list loads

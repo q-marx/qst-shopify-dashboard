@@ -11,6 +11,7 @@
     "frontend:dev": "vite",
     "build": "vite build",
     "start": "node server/index.js",
+    "render:health": "node scripts/check-render-health.js",
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "devDependencies": {
