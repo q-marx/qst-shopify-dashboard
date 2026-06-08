@@ -94,11 +94,17 @@ Check:
 - CSV and listing pack downloads still work
 - no Render logs show webhook or token verification errors
 
-If `/api/health` reports a `getaddrinfo ENOTFOUND` storage error, check that the Blueprint is using
-`qst-shopify-dashboard-db-frankfurt`. Render cannot move an existing database between regions, so the
-production service must use the Frankfurt database created by the current Blueprint. The app can keep
-running with `"storage": "memory_fallback"` while this is corrected, but pairing codes are ephemeral
-until Postgres is ready.
+If `/api/health` reports a `getaddrinfo ENOTFOUND dpg-...` storage error, the app is trying to use a
+Render internal database URL that is not reachable from the web service's region. The current project
+has the web service in Frankfurt and the existing database in Oregon, so either:
+
+- Fast fix: copy the Oregon database's **External Database URL** into the web service's `DATABASE_URL`,
+  then redeploy the web service.
+- Clean fix: create or Blueprint-sync `qst-shopify-dashboard-db-frankfurt` in Frankfurt, then set the
+  web service's `DATABASE_URL` to that Frankfurt database's **Internal Database URL**.
+
+The app can keep running with `"storage": "memory_fallback"` while this is corrected, but pairing
+codes are ephemeral until Postgres is ready.
 
 ## Before Shopify submission
 
