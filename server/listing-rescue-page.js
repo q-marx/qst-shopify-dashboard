@@ -303,18 +303,18 @@ export function renderListingRescuePage({ contactEmail }) {
         <div class="grid">
           <article class="package">
             <h3>Starter Rescue</h3>
-            <strong class="price">£29</strong>
-            <p>Up to 5 products. Best for testing the process or fixing a small batch before listing.</p>
+            <strong class="price">&pound;9</strong>
+            <p>Up to 3 products. Best for trying the process or fixing a tiny batch before listing.</p>
           </article>
           <article class="package">
             <h3>Listing Batch</h3>
-            <strong class="price">£79</strong>
-            <p>Up to 20 products. Good for a focused eBay, Etsy, or Facebook Marketplace push.</p>
+            <strong class="price">&pound;29</strong>
+            <p>Up to 12 products. Good for a focused eBay, Etsy, or Facebook Marketplace push.</p>
           </article>
           <article class="package">
             <h3>Shop Tidy</h3>
-            <strong class="price">£149</strong>
-            <p>Up to 50 products with readiness notes and a cleaner export pack for your next marketplace run.</p>
+            <strong class="price">&pound;59</strong>
+            <p>Up to 30 products with readiness notes and a cleaner export pack for your next marketplace run.</p>
           </article>
         </div>
       </section>

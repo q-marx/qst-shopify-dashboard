@@ -17,9 +17,9 @@ https://qst-shopify-dashboard.onrender.com/listing-rescue
 
 ## Packages
 
-- Starter Rescue: £29 for up to 5 products.
-- Listing Batch: £79 for up to 20 products.
-- Shop Tidy: £149 for up to 50 products.
+- Starter Rescue: GBP 9 for up to 3 products.
+- Listing Batch: GBP 29 for up to 12 products.
+- Shop Tidy: GBP 59 for up to 30 products.
 
 Take payment by PayPal invoice, bank transfer, or a Stripe Payment Link once you have one. Until then,
 use the page as a lead capture link and confirm payment manually by email.
@@ -39,7 +39,7 @@ Hi, I noticed you have products that could also work well on eBay/Etsy/Facebook 
 
 I am doing a small QST-assisted listing cleanup service this week: send me product links or a spreadsheet, and I return marketplace-ready titles, descriptions, tags, and missing-info notes.
 
-Packages start at £29 for 5 products.
+First slots start at GBP 9 for 3 products.
 
 Details: https://qst-shopify-dashboard.onrender.com/listing-rescue
 ```
@@ -53,7 +53,7 @@ If you sell handmade, decor, gifts, clothing, or collectibles and want to push p
 
 I will turn them into copy-ready titles, descriptions, tags, and listing notes.
 
-Starter slots from £29:
+Starter slots from GBP 9:
 https://qst-shopify-dashboard.onrender.com/listing-rescue
 ```
 
@@ -61,7 +61,10 @@ https://qst-shopify-dashboard.onrender.com/listing-rescue
 
 1. Post the short social post.
 2. Message 20 small sellers directly.
-3. Offer the first two jobs as 24-hour turnaround if they provide clean product links/photos.
+3. Offer the first three jobs as 24-hour turnaround if they provide clean product links/photos.
 4. Ask for payment before delivery, or 50% upfront for larger batches.
 5. Use QST and manual review to produce the pack.
 
+## Promotion Pack
+
+Use the ready-to-paste posts and DMs in `PROMOTION_PACK.md`.
