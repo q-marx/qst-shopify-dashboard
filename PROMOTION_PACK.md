@@ -6,9 +6,28 @@ Link:
 https://qst-shopify-dashboard.onrender.com/listing-rescue
 ```
 
+Free tool:
+
+```text
+https://qst-shopify-dashboard.onrender.com/listing-grader
+```
+
 Use these where promotion is allowed. Do not drop the link into groups that ban promos; comment helpfully first, then share the link only when relevant.
 
 ## Public Post
+
+```text
+I made a free product listing grader for small sellers.
+
+Paste a product title and description, and it checks whether the listing is ready for eBay, Etsy, Facebook Marketplace, Vinted, Depop, or Gumtree.
+
+It gives a score plus a practical fix list for titles, descriptions, tags, photos, SKU, and buyer detail.
+
+Try it here:
+https://qst-shopify-dashboard.onrender.com/listing-grader
+```
+
+## Paid Offer Post
 
 ```text
 I am opening a few low-cost slots for a practical product listing cleanup service.
@@ -30,6 +49,16 @@ https://qst-shopify-dashboard.onrender.com/listing-rescue
 ## Short Post
 
 ```text
+Free quick tool for sellers:
+
+Paste your product title and description, get a marketplace listing score and fix list.
+
+https://qst-shopify-dashboard.onrender.com/listing-grader
+```
+
+## Short Paid Post
+
+```text
 Need help turning product links into better eBay/Etsy/Facebook listings?
 
 I am doing a few first-batch QST Listing Rescue slots from GBP 9.
@@ -44,7 +73,12 @@ https://qst-shopify-dashboard.onrender.com/listing-rescue
 ```text
 For anyone selling products locally or online:
 
-I am testing a small listing cleanup service this week. If you have products you want to list on eBay, Etsy, Facebook Marketplace, Vinted, Depop, or Gumtree, I can turn your current product info/photos into cleaner listing titles, descriptions, tags, and notes.
+I made a free listing grader that checks product titles/descriptions for eBay, Etsy, Facebook Marketplace, Vinted, Depop, and Gumtree.
+
+It gives a score and tells you what to fix first:
+https://qst-shopify-dashboard.onrender.com/listing-grader
+
+I am also testing a small listing cleanup service this week. If you have products you want to list, I can turn your current product info/photos into cleaner listing titles, descriptions, tags, and notes.
 
 Starter option is GBP 9 for 3 products while I collect early examples.
 
@@ -56,9 +90,12 @@ https://qst-shopify-dashboard.onrender.com/listing-rescue
 ## Direct Message
 
 ```text
-Hi, I saw your products and thought they could work well on eBay/Etsy/Facebook Marketplace with cleaner listing copy.
+Hi, I saw your products and thought this free tool might be useful.
 
-I am testing a small QST-assisted service this week: send me product links or a spreadsheet, and I return improved titles, descriptions, tags, and missing-info notes.
+It checks a product title/description and gives a marketplace listing score plus a fix list:
+https://qst-shopify-dashboard.onrender.com/listing-grader
+
+I am also testing a small QST-assisted service this week: send me product links or a spreadsheet, and I return improved titles, descriptions, tags, and missing-info notes.
 
 First slots start at GBP 9 for 3 products.
 
@@ -90,9 +127,8 @@ If you send one product link, I can tell you what I would improve before you dec
 
 ## 20-Minute Promotion Sprint
 
-1. Post the Short Post on your own profile.
+1. Post the free grader Public Post on your own profile.
 2. Post the Local Seller Group Post in one group that allows promotions.
-3. Send the Direct Message to 10 sellers with visible product links.
+3. Send the softer Direct Message to 10 sellers with visible product links.
 4. Ask anyone interested to email you via the page.
 5. If they reply, ask for links/photos and payment before delivery.
-

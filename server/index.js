@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import pg from "pg";
+import { renderListingGraderPage } from "./listing-grader-page.js";
 import { renderListingRescuePage } from "./listing-rescue-page.js";
 
 const { Pool } = pg;
@@ -172,6 +173,12 @@ app.get("/listing-rescue", (_request, response) => {
   response
     .type("html")
     .send(renderListingRescuePage({ contactEmail: leadContactEmail() }));
+});
+
+app.get("/listing-grader", (_request, response) => {
+  response
+    .type("html")
+    .send(renderListingGraderPage({ contactEmail: leadContactEmail() }));
 });
 
 if (isProduction) {

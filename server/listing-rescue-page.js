@@ -266,7 +266,10 @@ export function renderListingRescuePage({ contactEmail }) {
   <body>
     <header class="shell topbar">
       <div class="brand">QST Listing Rescue</div>
-      <a class="button secondary" href="${contactHref}">Request a slot</a>
+      <div class="mini-actions">
+        <a class="button secondary" href="/listing-grader">Free listing grader</a>
+        <a class="button secondary" href="${contactHref}">Request a slot</a>
+      </div>
     </header>
 
     <main class="shell">
@@ -280,6 +283,7 @@ export function renderListingRescuePage({ contactEmail }) {
           </p>
           <div class="actions">
             <a class="button" href="${contactHref}">Get a quote today</a>
+            <a class="button secondary" href="/listing-grader">Try the free grader</a>
             <a class="button secondary" href="#packages">See packages</a>
           </div>
         </div>

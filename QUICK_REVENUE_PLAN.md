@@ -15,6 +15,12 @@ Public link after Render deploys:
 https://qst-shopify-dashboard.onrender.com/listing-rescue
 ```
 
+Free lead magnet:
+
+```text
+https://qst-shopify-dashboard.onrender.com/listing-grader
+```
+
 ## Packages
 
 - Starter Rescue: GBP 9 for up to 3 products.
