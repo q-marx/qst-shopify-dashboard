@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import pg from "pg";
+import { renderListingRescuePage } from "./listing-rescue-page.js";
 
 const { Pool } = pg;
 
@@ -165,6 +166,12 @@ app.get("/api/desktop/download", (_request, response) => {
 
 app.get("/auth/callback", (_request, response) => {
   response.redirect(302, "/");
+});
+
+app.get("/listing-rescue", (_request, response) => {
+  response
+    .type("html")
+    .send(renderListingRescuePage({ contactEmail: leadContactEmail() }));
 });
 
 if (isProduction) {
@@ -393,6 +400,10 @@ function verifyJwtHs256(token, secret) {
 function shopifySecret() {
   const value = safeString(process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET);
   return value.startsWith("replace_with_") ? "" : value;
+}
+
+function leadContactEmail() {
+  return safeString(process.env.QST_LEADS_EMAIL) || "qmarx.producer@gmail.com";
 }
 
 function decodeJwtPayload(token) {
