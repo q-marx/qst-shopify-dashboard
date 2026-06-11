@@ -263,11 +263,23 @@ function render() {
 
 function renderSourceCard() {
   const embedded = isEmbeddedShopifyContext();
-  const sourceLabel = state.source === "shopify" ? "Shopify Admin" : state.source === "demo" ? "Demo data" : "Loading";
+  const sourceLabel = embedded
+    ? "Shopify Admin"
+    : demoMode
+      ? state.source === "demo"
+        ? "Demo data"
+        : "Loading"
+      : "Shopify Admin required";
+  const sourceDescription = embedded
+    ? "Using App Bridge direct GraphQL access with read-only product scope."
+    : demoMode
+      ? "Previewing dashboard behavior with sample products."
+      : "Open this app inside Shopify Admin to load store products securely.";
+
   document.querySelector("#source-card").innerHTML = `
-    <span class="status-pill ${embedded ? "ok" : "demo"}">${embedded ? "Embedded" : "Local preview"}</span>
+    <span class="status-pill ${embedded ? "ok" : "demo"}">${embedded ? "Embedded" : demoMode ? "Local preview" : "Direct view"}</span>
     <h2>${sourceLabel}</h2>
-    <p>${embedded ? "Using App Bridge direct GraphQL access with read-only product scope." : "Previewing dashboard behavior with sample products."}</p>
+    <p>${sourceDescription}</p>
   `;
 }
 
@@ -325,7 +337,8 @@ function renderAccountPanel() {
         ? "Check needed"
         : "No active plan";
   const subscriptionClass = subscriptionActive ? "ok" : state.billingError ? "demo" : "warning";
-  const desktopStatus = desktop.available ? "Available" : "Pending";
+  const desktopStatus = desktop.available ? "Available" : "Optional";
+  const desktopVersion = desktop.version && desktop.version !== "Not configured" ? desktop.version : "";
 
   panel.innerHTML = `
     <article class="account-card">
@@ -350,16 +363,16 @@ function renderAccountPanel() {
 
     <article class="account-card">
       <div class="account-heading">
-        <span class="status-pill ${desktop.available ? "ok" : "warning"}">${escapeHtml(desktopStatus)}</span>
+        <span class="status-pill ${desktop.available ? "ok" : "demo"}">${escapeHtml(desktopStatus)}</span>
         <h2>Windows companion</h2>
       </div>
-      <p class="account-copy">Optional desktop tools for heavier marketplace preparation and local workflows.</p>
-      <p class="muted-copy">Version: ${escapeHtml(desktop.version || "Not configured")}</p>
+      <p class="account-copy">Optional desktop tools for bulk preparation, local review, and workflows outside Shopify Admin.</p>
+      ${desktopVersion ? `<p class="muted-copy">Version: ${escapeHtml(desktopVersion)}</p>` : `<p class="muted-copy">The Shopify dashboard can be used without installing QST Desktop.</p>`}
       <div class="account-actions">
         ${
           desktop.available
             ? `<a class="primary-button link-button" href="${escapeAttribute(desktop.downloadUrl)}" target="_blank" rel="noreferrer">Download installer</a>`
-            : `<button class="primary-button" disabled>Installer pending</button>`
+            : `<button class="secondary-button" disabled>No desktop download required</button>`
         }
       </div>
     </article>
@@ -369,7 +382,7 @@ function renderAccountPanel() {
         <span class="status-pill ${state.pairing ? "ok" : "demo"}">${state.pairing ? "Ready" : "Not paired"}</span>
         <h2>Desktop pairing</h2>
       </div>
-      <p class="account-copy">Use a short code to connect QST Desktop to this Shopify workspace.</p>
+      <p class="account-copy">If you use QST Desktop, generate a short code to connect it to this Shopify workspace.</p>
       ${state.pairing ? pairingCodeMarkup(state.pairing) : ""}
       ${state.pairingError ? `<p class="inline-error">${escapeHtml(state.pairingError)}</p>` : ""}
       <div class="account-actions">

@@ -42,7 +42,7 @@ QST_DESKTOP_VERSION=1.0.0
 QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-qst-installer-url
 ```
 
-If the Windows installer is not hosted yet, leave `QST_DESKTOP_DOWNLOAD_URL` blank temporarily. The dashboard will keep showing `Installer pending`.
+If the Windows installer is not hosted yet, leave `QST_DESKTOP_DOWNLOAD_URL` blank temporarily. The dashboard will make clear that the Shopify app can be used without the desktop download.
 
 ## After Render gives you a URL
 
