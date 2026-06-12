@@ -4,6 +4,7 @@ import {
   buildCsv,
   buildEbayPrepCsv,
   buildEbayPrepSummary,
+  buildEbayPublishPlan,
   buildTextPack,
   createDraft,
   marketplaceLabel
@@ -373,6 +374,9 @@ function renderEbayWorkflow() {
       <p>
         QST turns selected Shopify products into an eBay review pack with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
+      <p class="workflow-note">
+        The publish plan previews the Inventory API sequence for review; it does not publish live eBay listings.
+      </p>
     </div>
     <div class="workflow-status">
       <div>
@@ -395,6 +399,7 @@ function renderEbayWorkflow() {
     <div class="workflow-actions">
       <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} eBay-ready` : ""}</span>
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select eBay-ready</button>
+      <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download publish plan</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay batch</button>
     </div>
     <div class="workflow-setup">
@@ -429,6 +434,7 @@ function renderEbayWorkflow() {
   `;
 
   panel.querySelector("#select-ebay-ready")?.addEventListener("click", selectEbayReadyProducts);
+  panel.querySelector("#download-ebay-plan")?.addEventListener("click", downloadEbayPublishPlan);
   panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
   panel.querySelector("#save-ebay-setup")?.addEventListener("click", saveEbaySetupFromPanel);
 }
@@ -1031,6 +1037,28 @@ function downloadEbayBatch() {
   const draftOverrides = getDraftOverridesForExport(products);
   download(`qst-ebay-ready-batch-${date}.csv`, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
   window.shopify?.toast?.show?.("eBay batch generated.");
+}
+
+function downloadEbayPublishPlan() {
+  let products = getSelectedProducts();
+  if (!products.length) {
+    products = state.filteredProducts.filter((product) => assessEbayPrep(product).state === "ready");
+  }
+
+  if (!products.length) {
+    window.shopify?.toast?.show?.("No eBay-ready products found in the current view.");
+    return;
+  }
+
+  const date = new Date().toISOString().slice(0, 10);
+  const draftOverrides = getDraftOverridesForExport(products);
+  const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
+  download(
+    `qst-ebay-publish-plan-${date}.json`,
+    buildEbayPublishPlan(products, ebaySetup, draftOverrides),
+    "application/json;charset=utf-8"
+  );
+  window.shopify?.toast?.show?.("eBay publish plan generated.");
 }
 
 function exportSelected(type) {

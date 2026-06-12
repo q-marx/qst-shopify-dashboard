@@ -281,6 +281,11 @@ button:disabled,
   line-height: 1.45;
 }
 
+.workflow-note {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
 .workflow-status {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

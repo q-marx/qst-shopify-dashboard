@@ -7,6 +7,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - lets merchants search, filter, select, review, and edit listing drafts in memory
 - prepares eBay-ready batch files with draft copy, prices, SKUs, image URLs, variants, readiness notes, and category search hints
 - includes an eBay setup tracker for seller account, policies, dispatch location, and fallback category readiness
+- exports an eBay publish-plan JSON file that previews the inventory item, offer, and publish sequence without calling eBay
 - generates copy-ready marketplace listing packs and CSV exports from the browser
 - shows Shopify subscription status, desktop entitlement, and a pairing code flow
 - positions the Windows QST app as an optional advanced companion, not a requirement

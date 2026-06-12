@@ -308,6 +308,50 @@ export function buildEbayPrepCsv(products, draftOverrides = {}) {
   return rows.map((row) => row.map(csvCell).join(",")).join("\n");
 }
 
+export function buildEbayPublishPlan(products, ebaySettings = {}, draftOverrides = {}) {
+  const setup = normalizeEbaySetup(ebaySettings);
+  const setupMissing = ebaySetupMissing(setup);
+
+  return JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      mode: "ebay_publish_plan",
+      callsEbayApi: false,
+      purpose:
+        "Review the eBay Inventory API sequence QST would use after eBay seller setup is complete. This file does not publish listings.",
+      setup: {
+        ready: setupMissing.length === 0,
+        missing: setupMissing,
+        defaultCategoryLabel: setup.defaultCategoryLabel || "",
+        notes: setup.notes || ""
+      },
+      workflow: [
+        {
+          step: "create_or_replace_inventory_item",
+          method: "PUT",
+          endpointTemplate: "/sell/inventory/v1/inventory_item/{sku}",
+          reviewRequired: ["condition", "quantity", "image URLs", "item specifics"]
+        },
+        {
+          step: "create_offer",
+          method: "POST",
+          endpointTemplate: "/sell/inventory/v1/offer",
+          reviewRequired: ["categoryId", "merchantLocationKey", "paymentPolicyId", "returnPolicyId", "fulfillmentPolicyId"]
+        },
+        {
+          step: "publish_offer",
+          method: "POST",
+          endpointTemplate: "/sell/inventory/v1/offer/{offerId}/publish",
+          reviewRequired: ["seller approval before making the listing live"]
+        }
+      ],
+      products: products.map((product) => ebayPublishPlanProduct(product, setup, draftOverrides[product.id]))
+    },
+    null,
+    2
+  );
+}
+
 export function buildTextPack(products, marketplace = "ebay", draftOverrides = {}) {
   return products
     .map((product, index) => {
@@ -437,6 +481,89 @@ function productImageUrls(product) {
     .filter(Boolean)
     .filter((url, index, all) => all.indexOf(url) === index)
     .slice(0, 12);
+}
+
+function ebayPublishPlanProduct(product, setup, draftOverride) {
+  const draft = draftOverride || createDraft(product, "ebay");
+  const prep = assessEbayPrep(product);
+  const imageUrls = productImageUrls(product);
+  const variants = product.variants?.length ? product.variants : [{}];
+  const categoryLabel = setup.defaultCategoryReady && setup.defaultCategoryLabel
+    ? setup.defaultCategoryLabel
+    : prep.categoryHint.label;
+
+  return {
+    shopifyProductId: product.id,
+    handle: product.handle || "",
+    sourceTitle: product.title,
+    readiness: {
+      state: prep.state,
+      score: prep.score,
+      reviewItems: prep.blockers.map((check) => check.label)
+    },
+    category: {
+      searchHint: categoryLabel,
+      hintSource: prep.categoryHint.source,
+      sellerFallbackConfirmed: Boolean(setup.defaultCategoryReady)
+    },
+    inventoryItems: variants.map((variant, index) => {
+      const sku = variant.sku || generatedSku(product, variant, index);
+      return {
+        sku,
+        shopifyVariantId: variant.id || "",
+        createOrReplaceInventoryItem: {
+          endpoint: `/sell/inventory/v1/inventory_item/${sku}`,
+          title: draft.title,
+          description: draft.description,
+          imageUrls,
+          price: variant.price || draft.price || "",
+          quantity: normalizedQuantity(variant.inventoryQuantity),
+          variantOptions: variantOptionsText(variant),
+          itemSpecifics: {
+            productType: product.productType || "",
+            vendor: product.vendor || "",
+            tags: collectTags(product)
+          }
+        },
+        createOffer: {
+          endpoint: "/sell/inventory/v1/offer",
+          marketplaceId: "EBAY_GB",
+          format: "FIXED_PRICE",
+          requiredSellerValues: {
+            categoryId: setup.defaultCategoryReady ? "seller_confirmed_or_taxonomy_result" : "required_before_publish",
+            merchantLocationKey: setup.dispatchLocationReady ? "seller_confirmed" : "required_before_publish",
+            paymentPolicyId: setup.businessPoliciesReady ? "seller_confirmed" : "required_before_publish",
+            returnPolicyId: setup.businessPoliciesReady ? "seller_confirmed" : "required_before_publish",
+            fulfillmentPolicyId: setup.businessPoliciesReady ? "seller_confirmed" : "required_before_publish"
+          }
+        },
+        publishOffer: {
+          endpoint: "/sell/inventory/v1/offer/{offerId}/publish",
+          allowedWhen: prep.state === "ready" && ebaySetupMissing(setup).length === 0
+        }
+      };
+    })
+  };
+}
+
+function normalizeEbaySetup(input) {
+  return {
+    sellerAccountConnected: Boolean(input.sellerAccountConnected),
+    businessPoliciesReady: Boolean(input.businessPoliciesReady),
+    dispatchLocationReady: Boolean(input.dispatchLocationReady),
+    defaultCategoryReady: Boolean(input.defaultCategoryReady),
+    defaultCategoryLabel: String(input.defaultCategoryLabel || "").trim(),
+    notes: String(input.notes || "").trim()
+  };
+}
+
+function ebaySetupMissing(setup) {
+  return [
+    setup.sellerAccountConnected ? "" : "eBay seller account connection",
+    setup.businessPoliciesReady ? "" : "payment, return, and fulfilment policies",
+    setup.dispatchLocationReady ? "" : "dispatch country/postcode",
+    setup.defaultCategoryReady ? "" : "fallback category"
+  ].filter(Boolean);
 }
 
 function parsePrice(value) {
