@@ -21,6 +21,8 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 
 The app also includes a small Node/Express backend for Shopify compliance webhooks, account status, installer entitlement, and desktop pairing.
 
+For the full launch checklist and remaining setup steps, use [QST_SHOPIFY_LAUNCH_RUNBOOK.md](./QST_SHOPIFY_LAUNCH_RUNBOOK.md).
+
 ## Local Demo
 
 ```powershell
