@@ -14,6 +14,7 @@ import { getShopifyIdToken, isEmbeddedShopifyContext, loadBillingStatus, loadPro
 import "./styles.css";
 
 const demoMode = import.meta.env.VITE_QST_DEMO_MODE !== "false";
+const LOCAL_WORKSPACE_VERSION = 1;
 
 const state = {
   products: [],
@@ -61,7 +62,7 @@ async function refreshProducts() {
     state.products = result.products;
     state.source = result.source;
     state.selectedIds = new Set();
-    state.imageOverrides = new Map();
+    restoreLocalWorkspaceState(result.products);
     state.activeProductId = state.products[0]?.id ?? null;
     applyFilters();
   } catch (error) {
@@ -204,9 +205,10 @@ function renderShell() {
       <section class="export-bar">
         <div>
           <strong id="selected-summary">No products selected</strong>
-          <p>Exports are generated in your browser from read-only Shopify product data and your current draft settings.</p>
+          <p>Exports are generated from read-only Shopify data. Local draft and image edits are saved in this browser.</p>
         </div>
         <div class="export-actions">
+          <button class="text-button" id="clear-local-workspace">Clear local edits</button>
           <button class="secondary-button" id="export-csv">Download CSV</button>
           <button class="secondary-button" id="export-workspace-pack">Download workspace pack</button>
           <button class="primary-button" id="export-pack">Download listing pack</button>
@@ -250,6 +252,9 @@ function bindControls() {
   document.querySelector("#clear-selection").addEventListener("click", () => {
     state.selectedIds.clear();
     render();
+  });
+  document.querySelector("#clear-local-workspace").addEventListener("click", () => {
+    clearLocalWorkspaceState();
   });
   document.querySelector("#export-csv").addEventListener("click", () => {
     exportSelected("csv");
@@ -383,7 +388,7 @@ function renderEbayWorkflow() {
         QST turns selected Shopify products into an eBay review pack with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
-        The publish plan previews the Inventory API sequence for review; it does not publish live eBay listings.
+        The Shopify dashboard prepares and exports the batch; merchants who pair QST Desktop can use the same workspace for local eBay publishing automation after eBay setup.
       </p>
     </div>
     <div class="workflow-status">
@@ -593,13 +598,13 @@ function renderAccountPanel() {
         <span class="status-pill ${desktop.available ? "ok" : "demo"}">${escapeHtml(desktopStatus)}</span>
         <h2>Windows companion</h2>
       </div>
-      <p class="account-copy">Optional desktop tools for bulk preparation, local review, and workflows outside Shopify Admin.</p>
-      ${desktopVersion ? `<p class="muted-copy">Version: ${escapeHtml(desktopVersion)}</p>` : `<p class="muted-copy">The Shopify dashboard can be used without installing QST Desktop.</p>`}
+      <p class="account-copy">Optional companion for bulk preparation, local review, and advanced eBay publishing automation using the same Shopify workspace.</p>
+      ${desktopVersion ? `<p class="muted-copy">Version: ${escapeHtml(desktopVersion)}</p>` : `<p class="muted-copy">The Shopify dashboard can be used without installing QST Desktop; connect it only when you want local automation.</p>`}
       <div class="account-actions">
         ${
           desktop.available
             ? `<a class="primary-button link-button" href="${escapeAttribute(desktop.downloadUrl)}" target="_blank" rel="noreferrer">Download installer</a>`
-            : `<button class="secondary-button" disabled>No desktop download required</button>`
+            : `<button class="secondary-button" disabled>Installer pending</button>`
         }
       </div>
     </article>
@@ -609,7 +614,7 @@ function renderAccountPanel() {
         <span class="status-pill ${state.pairing ? "ok" : "demo"}">${state.pairing ? "Ready" : "Not paired"}</span>
         <h2>Desktop pairing</h2>
       </div>
-      <p class="account-copy">If you use QST Desktop, generate a short code to connect it to this Shopify workspace.</p>
+      <p class="account-copy">If you use QST Desktop, generate a short code to connect it to this Shopify product workspace.</p>
       ${state.pairing ? pairingCodeMarkup(state.pairing) : ""}
       ${state.pairingError ? `<p class="inline-error">${escapeHtml(state.pairingError)}</p>` : ""}
       <div class="account-actions">
@@ -699,9 +704,15 @@ function adminStoreHandle(authenticatedShop = "") {
 }
 
 function inferredShopDomain() {
-  const shop = new URLSearchParams(window.location.search).get("shop");
+  const params = new URLSearchParams(window.location.search);
+  const shop = params.get("shop");
   if (shop) {
     return shop;
+  }
+
+  const hostHandle = storeHandleFromEncodedHost(params.get("host"));
+  if (hostHandle) {
+    return `${hostHandle}.myshopify.com`;
   }
 
   const handle = adminStoreHandle(state.account?.authentication?.shop);
@@ -1048,6 +1059,7 @@ function updateDraftOverride(product, field, value) {
   }
 
   state.draftOverrides.set(key, next);
+  persistLocalWorkspaceState();
 }
 
 function draftKey(productId, marketplace) {
@@ -1161,12 +1173,14 @@ function setImageIncluded(product, url, included) {
       override.primaryUrl = "";
     }
   }
+  persistLocalWorkspaceState();
 }
 
 function setPrimaryImage(product, url) {
   const override = imageOverrideFor(product.id);
   override.excludedUrls.delete(url);
   override.primaryUrl = url;
+  persistLocalWorkspaceState();
 }
 
 function applyImageCuration(product) {
@@ -1195,6 +1209,109 @@ function applyImageCuration(product) {
       altText: entry.altText
     }))
   };
+}
+
+function restoreLocalWorkspaceState(products) {
+  state.draftOverrides = new Map();
+  state.imageOverrides = new Map();
+
+  const productIds = new Set(products.map((product) => product.id));
+  const payload = readLocalWorkspaceState();
+  if (!payload) {
+    return;
+  }
+
+  for (const entry of payload.draftOverrides || []) {
+    if (!entry?.key || !entry?.draft) {
+      continue;
+    }
+
+    const productId = productIdFromDraftKey(entry.key);
+    if (productIds.has(productId)) {
+      state.draftOverrides.set(entry.key, entry.draft);
+    }
+  }
+
+  for (const entry of payload.imageOverrides || []) {
+    if (!entry?.productId || !productIds.has(entry.productId)) {
+      continue;
+    }
+
+    state.imageOverrides.set(entry.productId, {
+      primaryUrl: String(entry.primaryUrl || ""),
+      excludedUrls: new Set(Array.isArray(entry.excludedUrls) ? entry.excludedUrls.map(String) : [])
+    });
+  }
+}
+
+function persistLocalWorkspaceState() {
+  const payload = {
+    version: LOCAL_WORKSPACE_VERSION,
+    updatedAt: new Date().toISOString(),
+    draftOverrides: Array.from(state.draftOverrides.entries()).map(([key, draft]) => ({
+      key,
+      draft
+    })),
+    imageOverrides: Array.from(state.imageOverrides.entries())
+      .map(([productId, override]) => ({
+        productId,
+        primaryUrl: override.primaryUrl || "",
+        excludedUrls: Array.from(override.excludedUrls || [])
+      }))
+      .filter((entry) => entry.primaryUrl || entry.excludedUrls.length)
+  };
+
+  if (!payload.draftOverrides.length && !payload.imageOverrides.length) {
+    removeLocalWorkspaceState();
+    return;
+  }
+
+  try {
+    window.localStorage?.setItem(localWorkspaceStorageKey(), JSON.stringify(payload));
+  } catch {
+    // Local persistence is a convenience layer; exports still work if storage is unavailable.
+  }
+}
+
+function readLocalWorkspaceState() {
+  try {
+    const raw = window.localStorage?.getItem(localWorkspaceStorageKey());
+    if (!raw) {
+      return null;
+    }
+
+    const payload = JSON.parse(raw);
+    return payload?.version === LOCAL_WORKSPACE_VERSION ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearLocalWorkspaceState() {
+  state.draftOverrides = new Map();
+  state.imageOverrides = new Map();
+  removeLocalWorkspaceState();
+  render();
+  window.shopify?.toast?.show?.("Local QST edits cleared.");
+}
+
+function removeLocalWorkspaceState() {
+  try {
+    window.localStorage?.removeItem(localWorkspaceStorageKey());
+  } catch {
+    // Ignore unavailable storage.
+  }
+}
+
+function localWorkspaceStorageKey() {
+  const shop = inferredShopDomain() || state.account?.authentication?.shop || "local-preview";
+  return `qst-listing-workspace:${shop}:local-workspace`;
+}
+
+function productIdFromDraftKey(key) {
+  const text = String(key || "");
+  const separator = text.indexOf(":");
+  return separator >= 0 ? text.slice(separator + 1) : "";
 }
 
 function selectEbayReadyProducts() {
