@@ -5,9 +5,20 @@
 - `render.yaml` Blueprint for a Node web service and PostgreSQL database.
 - Production server binding for Render's `PORT`.
 - `/api/health` health check.
-- Optional Postgres persistence for pairing codes and event logs through `DATABASE_URL`.
+- Durable Postgres persistence for pairing codes and event logs through `DATABASE_URL`.
 - Frankfurt web service and Frankfurt Postgres database so Render's internal database URL resolves correctly.
 - Production-safe secrets in the Blueprint with `sync: false`.
+
+Verified on 2026-06-12:
+
+```json
+{
+  "storage": "postgres",
+  "postgresReady": true,
+  "fallbackActive": false,
+  "storagePersistence": "durable"
+}
+```
 
 ## Required source setup
 

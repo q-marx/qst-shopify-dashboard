@@ -17,6 +17,7 @@ Use this document as the source of truth for the current Shopify dashboard proje
 - Render Blueprint source of truth: `render.yaml` on GitHub `main`
 - Current intended Render database: `qst-shopify-dashboard-db-frankfurt`
 - Current intended Render database region: Frankfurt
+- Render Postgres status: fixed and verified durable on 2026-06-12
 
 The direct Render URL is not supposed to show live Shopify products. Live products load inside Shopify Admin because the dashboard uses Shopify App Bridge direct Admin GraphQL access. Direct browser visits can only show an empty or preview state because there is no embedded Shopify session.
 
@@ -24,18 +25,30 @@ The direct Render URL is not supposed to show live Shopify products. Live produc
 
 Complete these in this order:
 
-1. Fix Render Postgres persistence.
-2. Confirm Render production environment variables.
-3. Deploy Shopify app config.
-4. Confirm Shopify App Pricing.
-5. Configure the desktop installer link or leave it intentionally pending.
-6. Run the embedded app QA checklist.
-7. Prepare the Shopify App Store submission assets and wording.
-8. Submit only after all final gates pass.
+1. Confirm Render production environment variables.
+2. Deploy Shopify app config.
+3. Confirm Shopify App Pricing.
+4. Configure the desktop installer link or leave it intentionally pending.
+5. Run the embedded app QA checklist.
+6. Prepare the Shopify App Store submission assets and wording.
+7. Submit only after all final gates pass.
 
 ## 1. Fix Render Postgres Persistence
 
-This is the main technical issue left.
+Status: fixed.
+
+Verified on 2026-06-12:
+
+```json
+{
+  "storage": "postgres",
+  "postgresReady": true,
+  "fallbackActive": false,
+  "storagePersistence": "durable"
+}
+```
+
+Keep the recovery notes below in case Render ever regresses to memory fallback.
 
 Current failing symptom:
 
