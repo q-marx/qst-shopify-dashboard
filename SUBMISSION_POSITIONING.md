@@ -14,6 +14,7 @@ QST Listing Workspace is the Shopify Admin app. It must be useful on its own:
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest
 - supports export-only primary/included image selection without editing Shopify media
 - saves local draft and export-image choices in the merchant's browser without writing back to Shopify
+- tracks browser-local marketplace work status per product so drafted, ready, and exported items remain visible
 - exports copy-ready marketplace packs and CSV files
 - supports eBay, Etsy, Facebook Marketplace, Vinted, Depop, and Gumtree style preparation
 
@@ -68,6 +69,7 @@ The desktop companion should be presented as additive:
 - helps with bulk preparation, local workflows, and advanced marketplace automation
 - can publish eligible products to eBay after the merchant connects eBay and completes eBay setup in the desktop companion
 - can use listing drafts, image choices, SKU readiness, and eBay setup notes prepared in the Shopify dashboard
+- can use the same product-level marketplace status context when merchants continue work outside Shopify Admin
 - can use a short pairing code to associate with the Shopify workspace
 - should not be needed to search, review, edit, or export listing drafts in Shopify Admin
 - should not be described as required for the Shopify app's eBay-ready batch preparation
@@ -96,6 +98,7 @@ Feature bullets:
 - QST workspace pack export with listing data, promo-page HTML, variants, and image URL manifest
 - Export-only image selection for choosing primary/included listing images without changing Shopify
 - Browser-local draft and image persistence for continuing marketplace preparation after refresh
+- Product-level local marketplace status for tracking drafted, ready, and exported work
 - Draft marketplace titles, descriptions, and tags
 - Export selected products as CSV or copy-ready listing packs
 - Optional Windows companion for larger local workflows and advanced eBay publishing automation

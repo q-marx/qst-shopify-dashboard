@@ -15,6 +15,13 @@ import "./styles.css";
 
 const demoMode = import.meta.env.VITE_QST_DEMO_MODE !== "false";
 const LOCAL_WORKSPACE_VERSION = 1;
+const WORKSPACE_STATUS_OPTIONS = [
+  { value: "not_started", label: "Not started", className: "neutral" },
+  { value: "drafted", label: "Drafted", className: "demo" },
+  { value: "ready", label: "Ready", className: "ok" },
+  { value: "exported", label: "Exported", className: "ok" }
+];
+const WORKSPACE_STATUS_VALUES = new Set(WORKSPACE_STATUS_OPTIONS.map((option) => option.value));
 
 const state = {
   products: [],
@@ -22,6 +29,7 @@ const state = {
   selectedIds: new Set(),
   draftOverrides: new Map(),
   imageOverrides: new Map(),
+  workspaceStatusOverrides: new Map(),
   activeProductId: null,
   marketplace: "ebay",
   query: "",
@@ -333,13 +341,15 @@ function renderMetrics() {
   const review = curatedProducts.filter((product) => assessReadiness(product).state === "review").length;
   const needsWork = curatedProducts.filter((product) => assessReadiness(product).state === "needs-work").length;
   const variants = state.products.reduce((total, product) => total + (product.variants?.length ?? 0), 0);
+  const exported = state.products.filter((product) => workspaceStatusFor(product.id).status === "exported").length;
 
   document.querySelector("#metrics").innerHTML = [
     metric("Products loaded", state.products.length),
     metric("Ready to export", ready),
     metric("Needs review", review),
     metric("Needs work", needsWork),
-    metric("Variants visible", variants)
+    metric("Variants visible", variants),
+    metric(`${marketplaceLabel(state.marketplace)} exported`, exported)
   ].join("");
 }
 
@@ -865,6 +875,7 @@ function renderProducts() {
 function productRow(product) {
   const curatedProduct = applyImageCuration(product);
   const readiness = assessReadiness(curatedProduct);
+  const workspaceStatus = workspaceStatusFor(product.id);
   const active = product.id === state.activeProductId;
   const checked = state.selectedIds.has(product.id);
   const firstVariant = product.variants?.[0] ?? {};
@@ -879,6 +890,7 @@ function productRow(product) {
           <small>${escapeHtml([product.productType, firstVariant.sku, product.status].filter(Boolean).join(" - "))}</small>
         </span>
       </button>
+      <span class="work-status-pill ${workspaceStatus.className}">${escapeHtml(workspaceStatus.label)}</span>
       <span class="readiness-pill ${readiness.state}">${readiness.score}%</span>
     </article>
   `;
@@ -903,6 +915,7 @@ function renderDraft() {
   content.innerHTML = `
     <div class="draft-stack">
       <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
+      ${workspaceStatusPanel(product)}
       ${imageCurationPanel(product)}
       <label>
         <span>Marketplace title</span>
@@ -933,6 +946,7 @@ function renderDraft() {
       updateDraftOverride(product, event.currentTarget.dataset.draftField, event.currentTarget.value);
     });
   });
+  bindWorkspaceStatusControls(content, product);
   bindImageCurationControls(content, product);
 }
 
@@ -941,6 +955,61 @@ function getDraft(product) {
   const curatedProduct = applyImageCuration(product);
   const override = state.draftOverrides.get(key);
   return override ? { ...override, imageUrl: curatedProduct.imageUrl } : createDraft(curatedProduct, state.marketplace);
+}
+
+function workspaceStatusPanel(product) {
+  const current = workspaceStatusFor(product.id);
+  const updated = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No local progress saved yet.";
+
+  return `
+    <div class="workspace-status-card">
+      <div class="workspace-status-heading">
+        <div>
+          <h3>${escapeHtml(marketplaceLabel(state.marketplace))} workspace status</h3>
+          <p>Track local listing progress for this marketplace. Shopify is not changed.</p>
+        </div>
+        <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
+      </div>
+      <div class="workspace-status-controls">
+        <label>
+          <span>Status</span>
+          <select id="workspace-status-select">
+            ${WORKSPACE_STATUS_OPTIONS.map(
+              (option) => `<option value="${escapeAttribute(option.value)}" ${option.value === current.status ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+            ).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Notes</span>
+          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Category checked, ready for next export" />
+        </label>
+      </div>
+      <p class="muted-copy" data-workspace-status-updated>${escapeHtml(updated)}</p>
+    </div>
+  `;
+}
+
+function bindWorkspaceStatusControls(container, product) {
+  const select = container.querySelector("#workspace-status-select");
+  const note = container.querySelector("#workspace-status-note");
+
+  select?.addEventListener("change", (event) => {
+    saveWorkspaceStatus(product.id, {
+      status: event.currentTarget.value
+    });
+  });
+
+  note?.addEventListener("input", (event) => {
+    saveWorkspaceStatus(
+      product.id,
+      {
+        note: event.currentTarget.value
+      },
+      {
+        render: false
+      }
+    );
+  });
 }
 
 function ebayDraftStatus(product) {
@@ -1059,11 +1128,122 @@ function updateDraftOverride(product, field, value) {
   }
 
   state.draftOverrides.set(key, next);
+  if (markWorkspaceDrafted(product.id)) {
+    refreshActiveWorkspaceStatusDom(product.id);
+    renderMetrics();
+    renderProducts();
+    renderEbayWorkflow();
+  }
   persistLocalWorkspaceState();
 }
 
 function draftKey(productId, marketplace) {
   return `${marketplace}:${productId}`;
+}
+
+function workspaceKey(productId, marketplace = state.marketplace) {
+  return `${marketplace}:${productId}`;
+}
+
+function workspaceStatusFor(productId, marketplace = state.marketplace) {
+  return normalizeWorkspaceStatus(state.workspaceStatusOverrides.get(workspaceKey(productId, marketplace)));
+}
+
+function normalizeWorkspaceStatus(record = {}) {
+  const status = WORKSPACE_STATUS_VALUES.has(record.status) ? record.status : "not_started";
+  const option = WORKSPACE_STATUS_OPTIONS.find((candidate) => candidate.value === status) || WORKSPACE_STATUS_OPTIONS[0];
+
+  return {
+    status,
+    label: option.label,
+    className: option.className,
+    note: String(record.note || ""),
+    updatedAt: String(record.updatedAt || "")
+  };
+}
+
+function saveWorkspaceStatus(productId, updates = {}, options = {}) {
+  const current = workspaceStatusFor(productId);
+  const next = normalizeWorkspaceStatus({
+    ...current,
+    ...updates,
+    updatedAt: new Date().toISOString()
+  });
+  const key = workspaceKey(productId);
+
+  if (next.status === "not_started" && !next.note.trim()) {
+    state.workspaceStatusOverrides.delete(key);
+  } else {
+    state.workspaceStatusOverrides.set(key, {
+      status: next.status,
+      note: next.note,
+      updatedAt: next.updatedAt
+    });
+  }
+
+  if (options.persist !== false) {
+    persistLocalWorkspaceState();
+  }
+
+  if (options.render !== false) {
+    renderMetrics();
+    renderProducts();
+    renderDraft();
+    renderEbayWorkflow();
+  }
+}
+
+function markWorkspaceDrafted(productId) {
+  const current = workspaceStatusFor(productId);
+  if (current.status === "drafted") {
+    return false;
+  }
+
+  state.workspaceStatusOverrides.set(workspaceKey(productId), {
+    status: "drafted",
+    note: current.note,
+    updatedAt: new Date().toISOString()
+  });
+  return true;
+}
+
+function markProductsWorkspaceStatus(products, status) {
+  for (const product of products) {
+    const current = workspaceStatusFor(product.id);
+    state.workspaceStatusOverrides.set(workspaceKey(product.id), {
+      status,
+      note: current.note,
+      updatedAt: new Date().toISOString()
+    });
+  }
+  persistLocalWorkspaceState();
+  renderMetrics();
+  renderProducts();
+  renderDraft();
+  renderEbayWorkflow();
+}
+
+function refreshActiveWorkspaceStatusDom(productId) {
+  if (productId !== state.activeProductId) {
+    return;
+  }
+
+  const current = workspaceStatusFor(productId);
+  const select = document.querySelector("#workspace-status-select");
+  if (select) {
+    select.value = current.status;
+  }
+
+  const pill = document.querySelector("[data-workspace-status-pill]");
+  if (pill) {
+    pill.className = `status-pill ${current.className}`;
+    pill.textContent = current.label;
+  }
+
+  const updated = document.querySelector("[data-workspace-status-updated]");
+  if (updated) {
+    updated.textContent = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No local progress saved yet.";
+  }
 }
 
 function checkItem(check) {
@@ -1173,6 +1353,7 @@ function setImageIncluded(product, url, included) {
       override.primaryUrl = "";
     }
   }
+  markWorkspaceDrafted(product.id);
   persistLocalWorkspaceState();
 }
 
@@ -1180,6 +1361,7 @@ function setPrimaryImage(product, url) {
   const override = imageOverrideFor(product.id);
   override.excludedUrls.delete(url);
   override.primaryUrl = url;
+  markWorkspaceDrafted(product.id);
   persistLocalWorkspaceState();
 }
 
@@ -1214,6 +1396,7 @@ function applyImageCuration(product) {
 function restoreLocalWorkspaceState(products) {
   state.draftOverrides = new Map();
   state.imageOverrides = new Map();
+  state.workspaceStatusOverrides = new Map();
 
   const productIds = new Set(products.map((product) => product.id));
   const payload = readLocalWorkspaceState();
@@ -1242,6 +1425,26 @@ function restoreLocalWorkspaceState(products) {
       excludedUrls: new Set(Array.isArray(entry.excludedUrls) ? entry.excludedUrls.map(String) : [])
     });
   }
+
+  for (const entry of payload.workspaceStatusOverrides || []) {
+    if (!entry?.key) {
+      continue;
+    }
+
+    const productId = productIdFromDraftKey(entry.key);
+    if (!productIds.has(productId)) {
+      continue;
+    }
+
+    const normalized = normalizeWorkspaceStatus(entry);
+    if (normalized.status !== "not_started" || normalized.note.trim()) {
+      state.workspaceStatusOverrides.set(entry.key, {
+        status: normalized.status,
+        note: normalized.note,
+        updatedAt: normalized.updatedAt
+      });
+    }
+  }
 }
 
 function persistLocalWorkspaceState() {
@@ -1258,10 +1461,16 @@ function persistLocalWorkspaceState() {
         primaryUrl: override.primaryUrl || "",
         excludedUrls: Array.from(override.excludedUrls || [])
       }))
-      .filter((entry) => entry.primaryUrl || entry.excludedUrls.length)
+      .filter((entry) => entry.primaryUrl || entry.excludedUrls.length),
+    workspaceStatusOverrides: Array.from(state.workspaceStatusOverrides.entries())
+      .map(([key, record]) => ({
+        key,
+        ...normalizeWorkspaceStatus(record)
+      }))
+      .filter((entry) => entry.status !== "not_started" || entry.note.trim())
   };
 
-  if (!payload.draftOverrides.length && !payload.imageOverrides.length) {
+  if (!payload.draftOverrides.length && !payload.imageOverrides.length && !payload.workspaceStatusOverrides.length) {
     removeLocalWorkspaceState();
     return;
   }
@@ -1290,6 +1499,7 @@ function readLocalWorkspaceState() {
 function clearLocalWorkspaceState() {
   state.draftOverrides = new Map();
   state.imageOverrides = new Map();
+  state.workspaceStatusOverrides = new Map();
   removeLocalWorkspaceState();
   render();
   window.shopify?.toast?.show?.("Local QST edits cleared.");
@@ -1340,6 +1550,7 @@ function downloadEbayBatch() {
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
   download(`qst-ebay-ready-batch-${date}.csv`, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
+  markProductsWorkspaceStatus(products, "exported");
   window.shopify?.toast?.show?.("eBay batch generated.");
 }
 
@@ -1364,6 +1575,7 @@ function downloadEbayPublishPlan() {
     buildEbayPublishPlan(products, ebaySetup, draftOverrides),
     "application/json;charset=utf-8"
   );
+  markProductsWorkspaceStatus(products, "ready");
   window.shopify?.toast?.show?.("eBay publish plan generated.");
 }
 
@@ -1385,6 +1597,7 @@ function exportSelected(type) {
     download(`${baseName}.txt`, buildTextPack(products, state.marketplace, draftOverrides), "text/plain;charset=utf-8");
   }
 
+  markProductsWorkspaceStatus(products, "exported");
   window.shopify?.toast?.show?.("QST export generated.");
 }
 

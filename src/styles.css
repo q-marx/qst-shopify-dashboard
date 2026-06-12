@@ -114,6 +114,7 @@ h3 {
 }
 
 .status-pill,
+.work-status-pill,
 .readiness-pill,
 .check-ok,
 .check-warn {
@@ -128,6 +129,7 @@ h3 {
 }
 
 .status-pill.ok,
+.work-status-pill.ok,
 .check-ok,
 .readiness-pill.ready {
   color: #005c44;
@@ -135,6 +137,7 @@ h3 {
 }
 
 .status-pill.demo,
+.work-status-pill.demo,
 .readiness-pill.review {
   color: #7a4a00;
   background: #ffe8b5;
@@ -145,6 +148,12 @@ h3 {
   background: #ffe8b5;
 }
 
+.status-pill.neutral,
+.work-status-pill.neutral {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
 .readiness-pill.needs-work,
 .check-warn {
   color: #8e1f0b;
@@ -153,7 +162,7 @@ h3 {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -495,7 +504,7 @@ button:focus-visible {
 
 .product-row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 64px;
+  grid-template-columns: 32px minmax(0, 1fr) 94px 64px;
   gap: 10px;
   align-items: center;
   min-height: 82px;
@@ -551,6 +560,11 @@ button:focus-visible {
   color: #6d7175;
 }
 
+.work-status-pill {
+  justify-self: end;
+  min-width: 86px;
+}
+
 .draft-panel {
   position: sticky;
   top: 16px;
@@ -579,6 +593,39 @@ button:focus-visible {
   border-radius: 8px;
   padding: 14px;
   background: #ffffff;
+}
+
+.workspace-status-card {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fbfa;
+}
+
+.workspace-status-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.workspace-status-heading h3 {
+  margin-bottom: 4px;
+}
+
+.workspace-status-heading p {
+  margin-bottom: 0;
+  color: #5c5f62;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.workspace-status-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.55fr) minmax(180px, 1fr);
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .image-curation-heading {
@@ -838,9 +885,18 @@ button:focus-visible {
     grid-template-columns: 28px minmax(0, 1fr);
   }
 
+  .product-row .work-status-pill,
   .product-row .readiness-pill {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .workspace-status-heading {
+    flex-direction: column;
+  }
+
+  .workspace-status-controls {
+    grid-template-columns: 1fr;
   }
 
   .image-choice {
