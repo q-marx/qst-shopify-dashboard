@@ -929,6 +929,7 @@ function renderDraft() {
         <span>Suggested tags</span>
         <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
       </label>
+      ${listingWorkbenchPanel()}
       ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
       <div class="checklist">
         <h3>Readiness checks</h3>
@@ -947,6 +948,7 @@ function renderDraft() {
     });
   });
   bindWorkspaceStatusControls(content, product);
+  bindListingWorkbenchControls(content, product);
   bindImageCurationControls(content, product);
 }
 
@@ -1010,6 +1012,132 @@ function bindWorkspaceStatusControls(container, product) {
       }
     );
   });
+}
+
+function listingWorkbenchPanel() {
+  return `
+    <div class="listing-actions-card">
+      <div class="listing-actions-heading">
+        <h3>Listing actions</h3>
+        <span>${escapeHtml(marketplaceLabel(state.marketplace))}</span>
+      </div>
+      <div class="listing-action-grid">
+        <button class="secondary-button" data-copy-listing-field="title">Copy title</button>
+        <button class="secondary-button" data-copy-listing-field="description">Copy description</button>
+        <button class="secondary-button" data-copy-listing-field="tags">Copy tags</button>
+        <button class="secondary-button" data-copy-listing-field="pack">Copy full pack</button>
+        <button class="secondary-button" data-download-current-listing>Download current listing</button>
+        <button class="primary-button" data-mark-current-ready>Mark ready</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindListingWorkbenchControls(container, product) {
+  container.querySelectorAll("[data-copy-listing-field]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      await copyListingField(product, event.currentTarget.dataset.copyListingField);
+    });
+  });
+
+  container.querySelector("[data-download-current-listing]")?.addEventListener("click", () => {
+    downloadCurrentListing(product);
+  });
+
+  container.querySelector("[data-mark-current-ready]")?.addEventListener("click", () => {
+    saveWorkspaceStatus(product.id, {
+      status: "ready"
+    });
+    window.shopify?.toast?.show?.("Listing marked ready.");
+  });
+}
+
+async function copyListingField(product, field) {
+  const draft = getDraft(product);
+  const text = listingFieldText(product, draft, field);
+  if (!text) {
+    window.shopify?.toast?.show?.("Nothing to copy.");
+    return;
+  }
+
+  const copied = await copyTextToClipboard(text);
+  if (copied) {
+    if (field === "pack") {
+      saveWorkspaceStatus(product.id, {
+        status: "ready"
+      });
+    }
+    window.shopify?.toast?.show?.("Copied to clipboard.");
+  } else {
+    window.shopify?.toast?.show?.("Copy failed. Try selecting the field manually.");
+  }
+}
+
+function listingFieldText(product, draft, field) {
+  if (field === "title") {
+    return draft.title;
+  }
+
+  if (field === "description") {
+    return draft.description;
+  }
+
+  if (field === "tags") {
+    return draft.tags.join(", ");
+  }
+
+  if (field === "pack") {
+    const curatedProduct = applyImageCuration(product);
+    return buildTextPack([curatedProduct], state.marketplace, {
+      [product.id]: draft
+    });
+  }
+
+  return "";
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return fallbackCopyText(text);
+  }
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
+}
+
+function downloadCurrentListing(product) {
+  const curatedProduct = applyImageCuration(product);
+  const draft = getDraft(product);
+  const date = new Date().toISOString().slice(0, 10);
+  const name = filenamePart(product.handle || product.title || "listing");
+  download(
+    `qst-${state.marketplace}-${name}-${date}.txt`,
+    buildTextPack([curatedProduct], state.marketplace, {
+      [product.id]: draft
+    }),
+    "text/plain;charset=utf-8"
+  );
+  markProductsWorkspaceStatus([product], "exported");
+  window.shopify?.toast?.show?.("Current listing downloaded.");
 }
 
 function ebayDraftStatus(product) {
@@ -1624,4 +1752,12 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replace(/\n/g, " ");
+}
+
+function filenamePart(value) {
+  return String(value || "listing")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "listing";
 }

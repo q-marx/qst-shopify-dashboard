@@ -602,6 +602,42 @@ button:focus-visible {
   background: #f8fbfa;
 }
 
+.listing-actions-card {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.listing-actions-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.listing-actions-heading h3 {
+  margin-bottom: 0;
+}
+
+.listing-actions-heading span {
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.listing-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.listing-action-grid button {
+  width: 100%;
+}
+
 .workspace-status-heading {
   display: flex;
   justify-content: space-between;
@@ -896,6 +932,10 @@ button:focus-visible {
   }
 
   .workspace-status-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-action-grid {
     grid-template-columns: 1fr;
   }
 

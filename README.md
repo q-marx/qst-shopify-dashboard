@@ -12,6 +12,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - lets merchants choose export-only primary/included images for listing packs without editing Shopify media
 - saves local draft and export-image choices in the merchant's browser so work survives refreshes without writing back to Shopify
 - tracks browser-local marketplace work status per product so merchants can see what is drafted, ready, or exported
+- provides copy-ready listing actions for titles, descriptions, tags, full packs, and single-product downloads
 - generates copy-ready marketplace listing packs and CSV exports from the browser
 - shows Shopify subscription status, desktop entitlement, and a pairing code flow
 - positions the Windows QST app as an optional advanced companion, not a requirement
