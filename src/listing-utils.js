@@ -7,6 +7,37 @@ const TITLE_LIMITS = {
   gumtree: 100
 };
 
+const EBAY_CATEGORY_HINTS = [
+  {
+    label: "Home decor",
+    keywords: ["home decor", "decorative", "ornament", "sculpture", "coaster", "jesmonite", "vase", "shelf", "wedding decor"]
+  },
+  {
+    label: "Jewellery and watches",
+    keywords: ["jewellery", "jewelry", "necklace", "pendant", "bracelet", "earring", "ring", "watch"]
+  },
+  {
+    label: "Clothes, shoes and accessories",
+    keywords: ["clothing", "shirt", "dress", "jacket", "shoe", "bag", "handbag", "fashion", "accessory"]
+  },
+  {
+    label: "Health and beauty",
+    keywords: ["beauty", "mascara", "makeup", "cosmetic", "skincare", "perfume", "fragrance"]
+  },
+  {
+    label: "Collectables",
+    keywords: ["collectable", "collectible", "figure", "figurine", "model", "memorabilia", "vintage"]
+  },
+  {
+    label: "Garden and patio",
+    keywords: ["garden", "patio", "outdoor", "planter", "plant pot"]
+  },
+  {
+    label: "Business and office",
+    keywords: ["office", "stationery", "desk", "organiser", "organizer"]
+  }
+];
+
 export function createDraft(product, marketplace = "ebay") {
   const titleLimit = TITLE_LIMITS[marketplace] ?? 80;
   const title = smartTrim(product.title, titleLimit);
@@ -30,6 +61,102 @@ export function createDraft(product, marketplace = "ebay") {
     price: product.variants?.[0]?.price ?? "",
     sku: product.variants?.[0]?.sku ?? "",
     imageUrl: product.imageUrl ?? ""
+  };
+}
+
+export function assessEbayPrep(product) {
+  const draft = createDraft(product, "ebay");
+  const variants = product.variants?.length ? product.variants : [{}];
+  const imageUrls = productImageUrls(product);
+  const categoryHint = ebayCategoryHint(product);
+  const variantOptionsReady =
+    variants.length <= 1 ||
+    variants.every((variant) =>
+      (variant.selectedOptions ?? []).some((option) => usableOptionValue(option.value))
+    );
+  const variantsWithinLimit = variants.length <= 100;
+  const hasPublishablePrice = variants.some((variant) => parsePrice(variant.price) >= 0.99);
+  const hasShopifySku = variants.some((variant) => String(variant.sku || "").trim());
+
+  const checks = [
+    {
+      key: "title",
+      label: "eBay title",
+      ok: Boolean(draft.title && draft.title.length <= TITLE_LIMITS.ebay),
+      detail: "Title is within eBay's 80 character limit"
+    },
+    {
+      key: "description",
+      label: "Description",
+      ok: Boolean(product.description && product.description.trim().length >= 30),
+      detail: "Description has enough detail for marketplace copy"
+    },
+    {
+      key: "images",
+      label: "Images",
+      ok: imageUrls.length > 0,
+      detail: `${imageUrls.length} image URL${imageUrls.length === 1 ? "" : "s"} available for the pack`
+    },
+    {
+      key: "price",
+      label: "Price",
+      ok: hasPublishablePrice,
+      detail: "At least one variant meets the eBay minimum price"
+    },
+    {
+      key: "sku",
+      label: "SKU source",
+      ok: true,
+      detail: hasShopifySku
+        ? "Uses Shopify SKUs where available"
+        : "QST can generate SHOPIFY_ reference SKUs for export tracking"
+    },
+    {
+      key: "variant_options",
+      label: "Variants",
+      ok: variantOptionsReady,
+      detail:
+        variants.length <= 1
+          ? "Single listing row"
+          : "Variant option values can be mapped into eBay rows"
+    },
+    {
+      key: "variant_limit",
+      label: "Variant limit",
+      ok: variantsWithinLimit,
+      detail: "eBay variation listings support up to 100 variants"
+    },
+    {
+      key: "category",
+      label: "Category hint",
+      ok: categoryHint.confidence !== "none",
+      detail:
+        categoryHint.confidence === "none"
+          ? "Needs seller category review before publishing"
+          : `${categoryHint.label} from Shopify title, type, tags, or description`
+    },
+    {
+      key: "status",
+      label: "Shopify status",
+      ok: product.status === "ACTIVE",
+      detail: "Product is active in Shopify"
+    }
+  ];
+
+  const passed = checks.filter((check) => check.ok).length;
+  const score = Math.round((passed / checks.length) * 100);
+  const blockers = checks.filter((check) => !check.ok);
+
+  return {
+    checks,
+    passed,
+    total: checks.length,
+    score,
+    state: score >= 85 ? "ready" : score >= 60 ? "review" : "needs-work",
+    blockers,
+    categoryHint,
+    imageCount: imageUrls.length,
+    inventoryRows: variants.length
   };
 }
 
@@ -83,6 +210,102 @@ export function assessReadiness(product) {
     score,
     state: score >= 85 ? "ready" : score >= 55 ? "review" : "needs-work"
   };
+}
+
+export function buildEbayPrepSummary(products) {
+  const summary = {
+    total: products.length,
+    ready: 0,
+    review: 0,
+    needsWork: 0,
+    missingImages: 0,
+    priceIssues: 0,
+    categoryReview: 0,
+    autoSkuRows: 0,
+    inventoryRows: 0
+  };
+
+  for (const product of products) {
+    const prep = assessEbayPrep(product);
+    const variants = product.variants?.length ? product.variants : [{}];
+    summary.inventoryRows += prep.inventoryRows;
+
+    if (prep.state === "ready") {
+      summary.ready += 1;
+    } else if (prep.state === "review") {
+      summary.review += 1;
+    } else {
+      summary.needsWork += 1;
+    }
+
+    if (!prep.checks.find((check) => check.key === "images")?.ok) {
+      summary.missingImages += 1;
+    }
+
+    if (!prep.checks.find((check) => check.key === "price")?.ok) {
+      summary.priceIssues += 1;
+    }
+
+    if (!prep.checks.find((check) => check.key === "category")?.ok) {
+      summary.categoryReview += 1;
+    }
+
+    summary.autoSkuRows += variants.filter((variant) => !String(variant.sku || "").trim()).length;
+  }
+
+  return summary;
+}
+
+export function buildEbayPrepCsv(products, draftOverrides = {}) {
+  const rows = [
+    [
+      "action",
+      "shopify_product_id",
+      "shopify_variant_id",
+      "handle",
+      "ebay_title",
+      "ebay_description",
+      "price",
+      "sku",
+      "quantity",
+      "variant_options",
+      "image_urls",
+      "category_search_hint",
+      "category_hint_source",
+      "readiness_score",
+      "review_items"
+    ]
+  ];
+
+  for (const product of products) {
+    const draft = draftOverrides[product.id] || createDraft(product, "ebay");
+    const prep = assessEbayPrep(product);
+    const imageUrls = productImageUrls(product);
+    const variants = product.variants?.length ? product.variants : [{}];
+    const reviewItems = prep.blockers.map((check) => check.label).join("; ");
+
+    variants.forEach((variant, index) => {
+      rows.push([
+        prep.state === "ready" ? "ready_for_ebay_review" : "needs_review",
+        product.id,
+        variant.id || "",
+        product.handle || "",
+        draft.title,
+        draft.description,
+        variant.price || draft.price || "",
+        variant.sku || generatedSku(product, variant, index),
+        normalizedQuantity(variant.inventoryQuantity),
+        variantOptionsText(variant),
+        imageUrls.join(" | "),
+        prep.categoryHint.label,
+        prep.categoryHint.source,
+        String(prep.score),
+        reviewItems
+      ]);
+    });
+  }
+
+  return rows.map((row) => row.map(csvCell).join(",")).join("\n");
 }
 
 export function buildTextPack(products, marketplace = "ebay", draftOverrides = {}) {
@@ -159,6 +382,35 @@ export function marketplaceLabel(value) {
   );
 }
 
+export function ebayCategoryHint(product) {
+  const haystack = [
+    product.title,
+    product.productType,
+    product.vendor,
+    product.description,
+    ...(product.tags ?? [])
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  for (const hint of EBAY_CATEGORY_HINTS) {
+    const match = hint.keywords.find((keyword) => haystack.includes(keyword));
+    if (match) {
+      return {
+        label: hint.label,
+        source: `keyword:${match}`,
+        confidence: "medium"
+      };
+    }
+  }
+
+  return {
+    label: "Seller category review needed",
+    source: "no_hint",
+    confidence: "none"
+  };
+}
+
 function collectTags(product) {
   const base = Array.isArray(product.tags) ? product.tags : [];
   const generated = [
@@ -174,6 +426,66 @@ function collectTags(product) {
     .filter(Boolean)
     .filter((tag, index, all) => all.findIndex((candidate) => candidate.toLowerCase() === tag.toLowerCase()) === index)
     .slice(0, 20);
+}
+
+function productImageUrls(product) {
+  return [
+    product.imageUrl,
+    ...(product.images ?? []).map((image) => image.url)
+  ]
+    .map((url) => String(url || "").trim())
+    .filter(Boolean)
+    .filter((url, index, all) => all.indexOf(url) === index)
+    .slice(0, 12);
+}
+
+function parsePrice(value) {
+  const number = Number(String(value ?? "").replace(/[^0-9.]+/g, ""));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function usableOptionValue(value) {
+  const text = String(value || "").trim().toLowerCase();
+  return Boolean(text && text !== "default" && text !== "default title");
+}
+
+function generatedSku(product, variant, index) {
+  const productToken = skuToken(shopifyIdTail(product.id) || product.handle || product.title || "PRODUCT");
+  const variantToken = skuToken(shopifyIdTail(variant.id) || variant.title || String(index + 1));
+  return variantsAreMeaningful(product) ? `SHOPIFY_${productToken}_${variantToken}`.slice(0, 50) : `SHOPIFY_${productToken}`.slice(0, 50);
+}
+
+function variantsAreMeaningful(product) {
+  return (product.variants ?? []).length > 1;
+}
+
+function shopifyIdTail(value) {
+  return String(value || "").split("/").filter(Boolean).pop() || "";
+}
+
+function skuToken(value) {
+  const token = String(value || "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "");
+  return token.slice(0, 40) || "SKU";
+}
+
+function normalizedQuantity(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "1";
+  }
+
+  return String(Math.max(0, Math.floor(number)));
+}
+
+function variantOptionsText(variant) {
+  return (variant.selectedOptions ?? [])
+    .filter((option) => usableOptionValue(option.value))
+    .map((option) => `${option.name}: ${option.value}`)
+    .join(" | ");
 }
 
 function summarizeVariants(product) {

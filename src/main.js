@@ -1,6 +1,9 @@
 import {
+  assessEbayPrep,
   assessReadiness,
   buildCsv,
+  buildEbayPrepCsv,
+  buildEbayPrepSummary,
   buildTextPack,
   createDraft,
   marketplaceLabel
@@ -106,6 +109,8 @@ function renderShell() {
 
       <section class="account-grid" id="account-panel"></section>
 
+      <section class="workflow-panel" id="ebay-workflow"></section>
+
       <section class="toolbar">
         <label class="search-field">
           <span>Search</span>
@@ -201,7 +206,7 @@ function bindControls() {
   });
   document.querySelector("#marketplace-select").addEventListener("change", (event) => {
     state.marketplace = event.target.value;
-    renderDraft();
+    render();
   });
   document.querySelector("#select-ready").addEventListener("click", () => {
     state.selectedIds = new Set(
@@ -256,6 +261,7 @@ function render() {
   renderSourceCard();
   renderMetrics();
   renderAccountPanel();
+  renderEbayWorkflow();
   renderProducts();
   renderDraft();
   renderExportSummary();
@@ -305,6 +311,63 @@ function metric(label, value) {
       <strong>${value}</strong>
     </article>
   `;
+}
+
+function renderEbayWorkflow() {
+  const panel = document.querySelector("#ebay-workflow");
+  if (!panel) {
+    return;
+  }
+
+  if (state.marketplace !== "ebay") {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+
+  panel.hidden = false;
+  const sourceProducts = state.filteredProducts;
+  const summary = buildEbayPrepSummary(sourceProducts);
+  const selected = getSelectedProducts();
+  const selectedSummary = buildEbayPrepSummary(selected);
+  const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
+  const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
+
+  panel.innerHTML = `
+    <div class="workflow-copy">
+      <p class="eyebrow">eBay batch workflow</p>
+      <h2>Prepare an eBay-ready batch from Shopify products</h2>
+      <p>
+        QST turns selected Shopify products into an eBay review pack with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
+      </p>
+    </div>
+    <div class="workflow-status">
+      <div>
+        <span>Ready in view</span>
+        <strong>${escapeHtml(readyLabel)}</strong>
+      </div>
+      <div>
+        <span>Inventory rows</span>
+        <strong>${escapeHtml(summary.inventoryRows)}</strong>
+      </div>
+      <div>
+        <span>Category review</span>
+        <strong>${escapeHtml(summary.categoryReview)}</strong>
+      </div>
+      <div>
+        <span>Auto SKU rows</span>
+        <strong>${escapeHtml(summary.autoSkuRows)}</strong>
+      </div>
+    </div>
+    <div class="workflow-actions">
+      <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} eBay-ready` : ""}</span>
+      <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select eBay-ready</button>
+      <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay batch</button>
+    </div>
+  `;
+
+  panel.querySelector("#select-ebay-ready")?.addEventListener("click", selectEbayReadyProducts);
+  panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
 }
 
 function renderAccountPanel() {
@@ -610,6 +673,7 @@ function renderProducts() {
       } else {
         state.selectedIds.delete(id);
       }
+      renderEbayWorkflow();
       renderExportSummary();
     });
   });
@@ -674,6 +738,7 @@ function renderDraft() {
         <span>Suggested tags</span>
         <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
       </label>
+      ${state.marketplace === "ebay" ? ebayDraftStatus(product) : ""}
       <div class="checklist">
         <h3>Readiness checks</h3>
         ${readiness.checks.map(checkItem).join("")}
@@ -695,6 +760,28 @@ function renderDraft() {
 function getDraft(product) {
   const key = draftKey(product.id, state.marketplace);
   return state.draftOverrides.get(key) || createDraft(product, state.marketplace);
+}
+
+function ebayDraftStatus(product) {
+  const prep = assessEbayPrep(product);
+  const blockerText = prep.blockers.length
+    ? prep.blockers.map((check) => check.label).join(", ")
+    : "Ready for eBay batch review";
+
+  return `
+    <div class="ebay-detail">
+      <div class="ebay-detail-heading">
+        <h3>eBay batch readiness</h3>
+        <span class="readiness-pill ${prep.state}">${prep.score}%</span>
+      </div>
+      <div class="ebay-facts">
+        <span>Category hint <strong>${escapeHtml(prep.categoryHint.label)}</strong></span>
+        <span>Image URLs <strong>${escapeHtml(prep.imageCount)}</strong></span>
+        <span>Inventory rows <strong>${escapeHtml(prep.inventoryRows)}</strong></span>
+      </div>
+      <p class="${prep.blockers.length ? "inline-error" : "muted-copy"}">${escapeHtml(blockerText)}</p>
+    </div>
+  `;
 }
 
 function getDraftOverridesForExport(products) {
@@ -767,6 +854,33 @@ function renderExportSummary() {
 
 function getSelectedProducts() {
   return state.products.filter((product) => state.selectedIds.has(product.id));
+}
+
+function selectEbayReadyProducts() {
+  state.selectedIds = new Set(
+    state.filteredProducts
+      .filter((product) => assessEbayPrep(product).state === "ready")
+      .map((product) => product.id)
+  );
+  render();
+  window.shopify?.toast?.show?.("eBay-ready products selected.");
+}
+
+function downloadEbayBatch() {
+  let products = getSelectedProducts();
+  if (!products.length) {
+    products = state.filteredProducts.filter((product) => assessEbayPrep(product).state === "ready");
+  }
+
+  if (!products.length) {
+    window.shopify?.toast?.show?.("No eBay-ready products found in the current view.");
+    return;
+  }
+
+  const date = new Date().toISOString().slice(0, 10);
+  const draftOverrides = getDraftOverridesForExport(products);
+  download(`qst-ebay-ready-batch-${date}.csv`, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
+  window.shopify?.toast?.show?.("eBay batch generated.");
 }
 
 function exportSelected(type) {

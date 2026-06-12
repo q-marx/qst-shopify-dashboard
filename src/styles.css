@@ -48,6 +48,7 @@ button {
 .panel,
 .export-bar,
 .toolbar,
+.workflow-panel,
 .account-card,
 .metric-card,
 .source-card {
@@ -261,6 +262,64 @@ button:disabled,
   font-size: 12px;
 }
 
+.workflow-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.85fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+.workflow-panel[hidden] {
+  display: none;
+}
+
+.workflow-copy p:last-child {
+  margin-bottom: 0;
+  color: #5c5f62;
+  line-height: 1.45;
+}
+
+.workflow-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.workflow-status div {
+  border-left: 3px solid #008060;
+  padding-left: 10px;
+}
+
+.workflow-status span,
+.batch-state {
+  display: block;
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.workflow-status strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 20px;
+}
+
+.workflow-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.batch-state {
+  flex-basis: 100%;
+  text-align: right;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 190px)) auto auto;
@@ -446,10 +505,45 @@ button:focus-visible {
 }
 
 .checklist,
-.variant-box {
+.variant-box,
+.ebay-detail {
   border: 1px solid #e1e3e5;
   border-radius: 8px;
   padding: 14px;
+}
+
+.ebay-detail {
+  background: #f8fbfa;
+}
+
+.ebay-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.ebay-detail-heading h3 {
+  margin-bottom: 0;
+}
+
+.ebay-facts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.ebay-facts span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #5c5f62;
+  font-size: 13px;
+}
+
+.ebay-facts strong {
+  color: #202223;
+  text-align: right;
 }
 
 .check-item {
@@ -521,7 +615,8 @@ button:focus-visible {
 @media (max-width: 1120px) {
   .hero-band,
   .workspace-grid,
-  .toolbar {
+  .toolbar,
+  .workflow-panel {
     grid-template-columns: 1fr;
   }
 
@@ -546,6 +641,7 @@ button:focus-visible {
 
   .hero-band,
   .toolbar,
+  .workflow-panel,
   .panel-heading,
   .export-bar {
     padding: 14px;
@@ -571,5 +667,18 @@ button:focus-visible {
   .export-bar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .workflow-actions {
+    justify-content: stretch;
+  }
+
+  .workflow-actions .primary-button,
+  .workflow-actions .secondary-button {
+    flex: 1 1 auto;
+  }
+
+  .batch-state {
+    text-align: left;
   }
 }
