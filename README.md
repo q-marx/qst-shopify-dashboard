@@ -6,6 +6,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - uses read-only `read_products` scope
 - lets merchants search, filter, select, review, and edit listing drafts in memory
 - prepares eBay-ready batch files with draft copy, prices, SKUs, image URLs, variants, readiness notes, and category search hints
+- includes an eBay setup tracker for seller account, policies, dispatch location, and fallback category readiness
 - generates copy-ready marketplace listing packs and CSV exports from the browser
 - shows Shopify subscription status, desktop entitlement, and a pairing code flow
 - positions the Windows QST app as an optional advanced companion, not a requirement
@@ -77,7 +78,7 @@ QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-installer-url
 QST_DESKTOP_VERSION=1.0.0
 ```
 
-The current pairing storage is in-memory for development. Use a database before production so pairing codes and desktop tokens survive restarts and can be revoked.
+Pairing codes and marketplace setup state use in-memory storage until Postgres is connected. Use a database before production so pairing codes, desktop tokens, and saved marketplace setup state survive restarts and can be revoked or updated reliably.
 
 ## Build
 

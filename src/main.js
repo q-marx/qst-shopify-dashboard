@@ -32,6 +32,10 @@ const state = {
   billing: null,
   billingLoading: false,
   billingError: "",
+  ebaySettings: defaultEbaySettingsPayload(),
+  ebaySettingsLoading: false,
+  ebaySettingsSaving: false,
+  ebaySettingsError: "",
   pairing: null,
   pairingLoading: false,
   pairingError: ""
@@ -42,6 +46,7 @@ const app = document.querySelector("#app");
 renderShell();
 refreshProducts();
 refreshAccount();
+refreshEbaySettings();
 
 async function refreshProducts() {
   state.loading = true;
@@ -88,6 +93,26 @@ async function refreshAccount() {
   } finally {
     state.billingLoading = false;
     renderAccountPanel();
+  }
+}
+
+async function refreshEbaySettings() {
+  if (!isEmbeddedShopifyContext() && !demoMode) {
+    state.ebaySettings = defaultEbaySettingsPayload();
+    return;
+  }
+
+  state.ebaySettingsLoading = true;
+  state.ebaySettingsError = "";
+  renderEbayWorkflow();
+
+  try {
+    state.ebaySettings = await backendRequest(`/api/marketplace-settings/ebay${accountContextQuery()}`);
+  } catch (error) {
+    state.ebaySettingsError = error.message || "Could not load eBay setup status.";
+  } finally {
+    state.ebaySettingsLoading = false;
+    renderEbayWorkflow();
   }
 }
 
@@ -332,6 +357,14 @@ function renderEbayWorkflow() {
   const selectedSummary = buildEbayPrepSummary(selected);
   const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
   const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
+  const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
+  const ebaySetupSummary = state.ebaySettings?.summary || setupSummaryFromSettings(ebaySetup);
+  const setupStatusClass = ebaySetupSummary.ready ? "ok" : ebaySetupSummary.completed ? "demo" : "warning";
+  const setupStatusLabel = state.ebaySettingsLoading
+    ? "Loading"
+    : ebaySetupSummary.ready
+      ? "Ready"
+      : `${ebaySetupSummary.completed}/${ebaySetupSummary.total} complete`;
 
   panel.innerHTML = `
     <div class="workflow-copy">
@@ -364,10 +397,127 @@ function renderEbayWorkflow() {
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select eBay-ready</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay batch</button>
     </div>
+    <div class="workflow-setup">
+      <div class="setup-heading">
+        <div>
+          <h3>eBay publishing setup tracker</h3>
+          <p>Track the setup needed before advanced eBay publishing in QST Desktop or a future hosted eBay publish flow.</p>
+        </div>
+        <span class="status-pill ${setupStatusClass}">${escapeHtml(setupStatusLabel)}</span>
+      </div>
+      <div class="setup-checks">
+        ${ebaySetupCheck("sellerAccountConnected", "eBay seller account connected", ebaySetup.sellerAccountConnected)}
+        ${ebaySetupCheck("businessPoliciesReady", "Payment, return, and fulfilment policies ready", ebaySetup.businessPoliciesReady)}
+        ${ebaySetupCheck("dispatchLocationReady", "Dispatch country/postcode confirmed", ebaySetup.dispatchLocationReady)}
+        ${ebaySetupCheck("defaultCategoryReady", "Fallback category chosen", ebaySetup.defaultCategoryReady)}
+      </div>
+      <div class="setup-fields">
+        <label>
+          <span>Fallback category note</span>
+          <input id="ebay-category-label" type="text" value="${escapeAttribute(ebaySetup.defaultCategoryLabel)}" placeholder="Example: Home decor, 10033, seller review needed" />
+        </label>
+        <label>
+          <span>Setup notes</span>
+          <input id="ebay-setup-notes" type="text" value="${escapeAttribute(ebaySetup.notes)}" placeholder="Policy/account notes for the next publishing pass" />
+        </label>
+        <button class="secondary-button" id="save-ebay-setup" ${state.ebaySettingsSaving || state.ebaySettingsLoading ? "disabled" : ""}>
+          ${state.ebaySettingsSaving ? "Saving..." : "Save setup"}
+        </button>
+      </div>
+      ${state.ebaySettingsError ? `<p class="inline-error">${escapeHtml(state.ebaySettingsError)}</p>` : ""}
+    </div>
   `;
 
   panel.querySelector("#select-ebay-ready")?.addEventListener("click", selectEbayReadyProducts);
   panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
+  panel.querySelector("#save-ebay-setup")?.addEventListener("click", saveEbaySetupFromPanel);
+}
+
+function ebaySetupCheck(key, label, checked) {
+  return `
+    <label class="setup-check">
+      <input type="checkbox" data-ebay-setup="${escapeAttribute(key)}" ${checked ? "checked" : ""} />
+      <span>${escapeHtml(label)}</span>
+    </label>
+  `;
+}
+
+async function saveEbaySetupFromPanel() {
+  const panel = document.querySelector("#ebay-workflow");
+  if (!panel) {
+    return;
+  }
+
+  const settings = {
+    sellerAccountConnected: panel.querySelector('[data-ebay-setup="sellerAccountConnected"]')?.checked || false,
+    businessPoliciesReady: panel.querySelector('[data-ebay-setup="businessPoliciesReady"]')?.checked || false,
+    dispatchLocationReady: panel.querySelector('[data-ebay-setup="dispatchLocationReady"]')?.checked || false,
+    defaultCategoryReady: panel.querySelector('[data-ebay-setup="defaultCategoryReady"]')?.checked || false,
+    defaultCategoryLabel: panel.querySelector("#ebay-category-label")?.value || "",
+    notes: panel.querySelector("#ebay-setup-notes")?.value || ""
+  };
+
+  const previousSettings = state.ebaySettings;
+  state.ebaySettings = {
+    ...previousSettings,
+    settings,
+    summary: setupSummaryFromSettings(settings)
+  };
+  state.ebaySettingsSaving = true;
+  state.ebaySettingsError = "";
+  renderEbayWorkflow();
+
+  try {
+    state.ebaySettings = await backendRequest(`/api/marketplace-settings/ebay${accountContextQuery()}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        shop: inferredShopDomain(),
+        settings
+      })
+    });
+    window.shopify?.toast?.show?.("eBay setup saved.");
+  } catch (error) {
+    state.ebaySettings = previousSettings;
+    state.ebaySettingsError = error.message || "Could not save eBay setup status.";
+  } finally {
+    state.ebaySettingsSaving = false;
+    renderEbayWorkflow();
+  }
+}
+
+function defaultEbaySettingsPayload() {
+  const settings = {
+    sellerAccountConnected: false,
+    businessPoliciesReady: false,
+    dispatchLocationReady: false,
+    defaultCategoryReady: false,
+    defaultCategoryLabel: "",
+    notes: "",
+    updatedAt: null
+  };
+
+  return {
+    shop: "",
+    marketplace: "ebay",
+    settings,
+    summary: setupSummaryFromSettings(settings)
+  };
+}
+
+function setupSummaryFromSettings(settings) {
+  const checks = [
+    settings.sellerAccountConnected,
+    settings.businessPoliciesReady,
+    settings.dispatchLocationReady,
+    settings.defaultCategoryReady
+  ];
+  const completed = checks.filter(Boolean).length;
+  return {
+    completed,
+    total: checks.length,
+    ready: completed === checks.length,
+    status: completed === checks.length ? "ready" : completed ? "in_progress" : "not_started"
+  };
 }
 
 function renderAccountPanel() {

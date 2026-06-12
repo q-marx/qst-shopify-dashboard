@@ -20,6 +20,7 @@ const port = Number(process.env.PORT || process.env.FRONTEND_PORT || 5173);
 const host = isProduction || process.env.RENDER || process.env.HOST ? "0.0.0.0" : "127.0.0.1";
 const pairingTtlMinutes = Math.max(Number(process.env.QST_PAIRING_TTL_MINUTES || 15), 1);
 const pairingCodes = new Map();
+const marketplaceSettings = new Map();
 const databaseUrl = safeString(process.env.DATABASE_URL);
 const db = databaseUrl
   ? new Pool({
@@ -62,6 +63,47 @@ app.get("/api/health", (_request, response) => {
 
 app.get("/api/account", (request, response) => {
   response.json(buildAccountPayload(authenticateAppBridgeRequest(request), request));
+});
+
+app.get("/api/marketplace-settings/ebay", async (request, response) => {
+  const auth = authenticateAppBridgeRequest(request);
+  if (isProduction && !auth.authenticated) {
+    response.status(401).json({ error: "A valid Shopify App Bridge ID token is required." });
+    return;
+  }
+
+  const shop = shopForRequest(request, auth);
+  const settings = await getMarketplaceSettings(shop, "ebay");
+  response.json({
+    shop,
+    marketplace: "ebay",
+    settings,
+    summary: ebaySettingsSummary(settings)
+  });
+});
+
+app.put("/api/marketplace-settings/ebay", async (request, response) => {
+  const auth = authenticateAppBridgeRequest(request);
+  if (isProduction && !auth.authenticated) {
+    response.status(401).json({ error: "A valid Shopify App Bridge ID token is required." });
+    return;
+  }
+
+  const shop = shopForRequest(request, auth);
+  const settings = normalizeEbaySettings(request.body?.settings || request.body || {});
+  await saveMarketplaceSettings(shop, "ebay", settings);
+  await recordEvent("ebay_setup_updated", {
+    shop,
+    completed: ebaySettingsSummary(settings).completed,
+    ready: ebaySettingsSummary(settings).ready
+  });
+
+  response.json({
+    shop,
+    marketplace: "ebay",
+    settings,
+    summary: ebaySettingsSummary(settings)
+  });
 });
 
 app.post("/api/desktop/pairing-code", async (request, response) => {
@@ -253,12 +295,29 @@ function buildAccountPayload(auth, request) {
       downloadUrl,
       pairingTtlMinutes
     },
+    marketplaces: {
+      ebay: {
+        dashboardMode: "batch_preparation",
+        hostedPublishingConfigured: Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET),
+        desktopPublishingOptional: true
+      }
+    },
     compliance: {
       customerDataStored: false,
       productScope: "read_products",
       webhookEndpoint: "/webhooks"
     }
   };
+}
+
+function shopForRequest(request, auth = {}) {
+  return (
+    auth.shop ||
+    safeString(request.body?.shop) ||
+    safeString(request.query.shop) ||
+    storeHandleFromRequest(request, auth.shop) ||
+    "local-preview"
+  );
 }
 
 function storeHandleFromRequest(request, authenticatedShop = "") {
@@ -460,6 +519,16 @@ async function initializeStorage() {
       details jsonb not null default '{}'::jsonb
     )
   `);
+
+  await db.query(`
+    create table if not exists qst_marketplace_settings (
+      shop text not null,
+      marketplace text not null,
+      settings jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (shop, marketplace)
+    )
+  `);
 }
 
 function storageHealth() {
@@ -651,6 +720,95 @@ async function clearPairingRecords(shop = "") {
   } else {
     await db.query("delete from qst_pairing_codes");
   }
+}
+
+async function getMarketplaceSettings(shop, marketplace) {
+  const key = marketplaceSettingsKey(shop, marketplace);
+  if (!dbReady) {
+    return marketplaceSettings.get(key) || defaultEbaySettings();
+  }
+
+  const result = await db.query(
+    `
+      select settings
+      from qst_marketplace_settings
+      where shop = $1
+        and marketplace = $2
+      limit 1
+    `,
+    [shop, marketplace]
+  );
+
+  return normalizeEbaySettings(result.rows[0]?.settings || {});
+}
+
+async function saveMarketplaceSettings(shop, marketplace, settings) {
+  const normalized = normalizeEbaySettings(settings);
+  const key = marketplaceSettingsKey(shop, marketplace);
+
+  if (!dbReady) {
+    marketplaceSettings.set(key, normalized);
+    return normalized;
+  }
+
+  await db.query(
+    `
+      insert into qst_marketplace_settings (shop, marketplace, settings, updated_at)
+      values ($1, $2, $3::jsonb, now())
+      on conflict (shop, marketplace)
+      do update set
+        settings = excluded.settings,
+        updated_at = now()
+    `,
+    [shop, marketplace, JSON.stringify(normalized)]
+  );
+
+  return normalized;
+}
+
+function marketplaceSettingsKey(shop, marketplace) {
+  return `${marketplace}:${shop}`;
+}
+
+function defaultEbaySettings() {
+  return {
+    sellerAccountConnected: false,
+    businessPoliciesReady: false,
+    dispatchLocationReady: false,
+    defaultCategoryReady: false,
+    defaultCategoryLabel: "",
+    notes: "",
+    updatedAt: null
+  };
+}
+
+function normalizeEbaySettings(input) {
+  const base = defaultEbaySettings();
+  return {
+    sellerAccountConnected: Boolean(input.sellerAccountConnected ?? base.sellerAccountConnected),
+    businessPoliciesReady: Boolean(input.businessPoliciesReady ?? base.businessPoliciesReady),
+    dispatchLocationReady: Boolean(input.dispatchLocationReady ?? base.dispatchLocationReady),
+    defaultCategoryReady: Boolean(input.defaultCategoryReady ?? base.defaultCategoryReady),
+    defaultCategoryLabel: safeString(input.defaultCategoryLabel).slice(0, 80),
+    notes: safeString(input.notes).slice(0, 280),
+    updatedAt: safeString(input.updatedAt) || new Date().toISOString()
+  };
+}
+
+function ebaySettingsSummary(settings) {
+  const checks = [
+    settings.sellerAccountConnected,
+    settings.businessPoliciesReady,
+    settings.dispatchLocationReady,
+    settings.defaultCategoryReady
+  ];
+  const completed = checks.filter(Boolean).length;
+  return {
+    completed,
+    total: checks.length,
+    ready: completed === checks.length,
+    status: completed === checks.length ? "ready" : completed ? "in_progress" : "not_started"
+  };
 }
 
 async function cleanupExpiredPairingCodes() {
