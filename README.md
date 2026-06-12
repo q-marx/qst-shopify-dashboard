@@ -12,11 +12,12 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - lets merchants choose export-only primary/included images for listing packs without editing Shopify media
 - saves local draft and export-image choices in the merchant's browser so work survives refreshes without writing back to Shopify
 - tracks browser-local marketplace work status per product so merchants can see what is drafted, ready, or exported
+- filters the product queue by local marketplace work status for staged listing workflows
 - provides copy-ready listing actions for titles, descriptions, tags, full packs, and single-product downloads
 - applies browser-local bulk prep to selected products, including status updates, title prefixes, and tag appends
 - generates copy-ready marketplace listing packs and CSV exports from the browser
 - shows Shopify subscription status, desktop entitlement, and a pairing code flow
-- positions the Windows QST app as an optional advanced companion, not a requirement
+- positions the Windows QST app as an optional companion for heavier local workflows and one-click eBay publishing automation, not a requirement
 
 The app also includes a small Node/Express backend for Shopify compliance webhooks, account status, installer entitlement, and desktop pairing.
 
@@ -78,7 +79,7 @@ https://admin.shopify.com/store/:store_handle/charges/:app_handle/pricing_plans
 Set `QST_SHOPIFY_APP_HANDLE` and `VITE_QST_SHOPIFY_APP_HANDLE` to the embedded app handle used in Shopify Admin, for example `qst-listing-workspace` from `/apps/qst-listing-workspace`.
 For local development only, `QST_DEV_STORE_HANDLE` can point the pricing button at your dev store when Shopify's embedded URL does not expose a shop handle. The production app resolves the merchant's actual shop from Shopify context instead.
 
-After the merchant has an active plan, the dashboard can show the Windows installer and generate a short desktop pairing code. The Shopify dashboard remains usable without the desktop app; the Windows companion is additive for larger local workflows and advanced eBay publishing automation using the same Shopify product workspace. Configure the installer link with:
+After the merchant has an active plan, the dashboard can show the Windows installer and generate a short desktop pairing code. The Shopify dashboard remains usable without the desktop app; the Windows companion is additive for larger local workflows and one-click eBay publishing automation after setup using the same Shopify product workspace. Configure the installer link with:
 
 ```env
 QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-installer-url

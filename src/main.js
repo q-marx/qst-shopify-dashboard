@@ -43,6 +43,7 @@ const state = {
   query: "",
   readinessFilter: "all",
   statusFilter: "all",
+  workStatusFilter: "all",
   source: "loading",
   loading: false,
   error: "",
@@ -181,6 +182,13 @@ function renderShell() {
           </select>
         </label>
         <label>
+          <span>Work status</span>
+          <select id="work-status-filter">
+            <option value="all">All work</option>
+            ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
           <span>Pack target</span>
           <select id="marketplace-select">
             <option value="ebay">eBay</option>
@@ -254,8 +262,14 @@ function bindControls() {
     applyFilters();
     render();
   });
+  document.querySelector("#work-status-filter").addEventListener("change", (event) => {
+    state.workStatusFilter = event.target.value;
+    applyFilters();
+    render();
+  });
   document.querySelector("#marketplace-select").addEventListener("change", (event) => {
     state.marketplace = event.target.value;
+    applyFilters();
     render();
   });
   document.querySelector("#select-ready").addEventListener("click", () => {
@@ -289,6 +303,7 @@ function applyFilters() {
   const query = state.query.trim().toLowerCase();
   state.filteredProducts = state.products.filter((product) => {
     const readiness = assessReadiness(product);
+    const workStatus = workspaceStatusFor(product.id).status;
     const haystack = [
       product.title,
       product.handle,
@@ -304,7 +319,8 @@ function applyFilters() {
     return (
       (!query || haystack.includes(query)) &&
       (state.readinessFilter === "all" || readiness.state === state.readinessFilter) &&
-      (state.statusFilter === "all" || product.status === state.statusFilter)
+      (state.statusFilter === "all" || product.status === state.statusFilter) &&
+      (state.workStatusFilter === "all" || workStatus === state.workStatusFilter)
     );
   });
 
@@ -409,7 +425,7 @@ function renderEbayWorkflow() {
         QST turns selected Shopify products into an eBay review pack with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
-        The Shopify dashboard prepares and exports the batch; merchants who pair QST Desktop can use the same workspace for local eBay publishing automation after eBay setup.
+        The Shopify dashboard prepares and exports the batch. QST Desktop is optional, and can continue from the same workspace for one-click eBay publishing automation after eBay setup.
       </p>
     </div>
     <div class="workflow-status">
@@ -440,7 +456,7 @@ function renderEbayWorkflow() {
       <div class="setup-heading">
         <div>
           <h3>eBay publishing setup tracker</h3>
-          <p>Track the setup needed before advanced eBay publishing in QST Desktop or a future hosted eBay publish flow.</p>
+          <p>Track the setup needed before optional QST Desktop one-click eBay publishing or a future hosted eBay publish flow.</p>
         </div>
         <span class="status-pill ${setupStatusClass}">${escapeHtml(setupStatusLabel)}</span>
       </div>
@@ -557,6 +573,7 @@ function applyBulkLocalPrep() {
   }
 
   persistLocalWorkspaceState();
+  applyFilters();
   render();
   window.shopify?.toast?.show?.("Bulk prep applied locally.");
 }
@@ -707,7 +724,7 @@ function renderAccountPanel() {
         <span class="status-pill ${desktop.available ? "ok" : "demo"}">${escapeHtml(desktopStatus)}</span>
         <h2>Windows companion</h2>
       </div>
-      <p class="account-copy">Optional companion for bulk preparation, local review, and advanced eBay publishing automation using the same Shopify workspace.</p>
+      <p class="account-copy">Optional companion for bulk preparation, local review, and one-click eBay publishing automation after setup, using the same Shopify workspace.</p>
       ${desktopVersion ? `<p class="muted-copy">Version: ${escapeHtml(desktopVersion)}</p>` : `<p class="muted-copy">The Shopify dashboard can be used without installing QST Desktop; connect it only when you want local automation.</p>`}
       <div class="account-actions">
         ${
@@ -1357,6 +1374,7 @@ function updateDraftOverride(product, field, value) {
 
   state.draftOverrides.set(key, next);
   if (markWorkspaceDrafted(product.id)) {
+    applyFilters();
     refreshActiveWorkspaceStatusDom(product.id);
     renderMetrics();
     renderProducts();
@@ -1414,6 +1432,7 @@ function saveWorkspaceStatus(productId, updates = {}, options = {}) {
   }
 
   if (options.render !== false) {
+    applyFilters();
     renderMetrics();
     renderProducts();
     renderBulkPanel();
@@ -1442,6 +1461,7 @@ function markProductsWorkspaceStatus(products, status) {
     setWorkspaceStatusRecord(product.id, status, updatedAt);
   }
   persistLocalWorkspaceState();
+  applyFilters();
   renderMetrics();
   renderProducts();
   renderBulkPanel();
@@ -1637,7 +1657,9 @@ function setImageIncluded(product, url, included) {
       override.primaryUrl = "";
     }
   }
-  markWorkspaceDrafted(product.id);
+  if (markWorkspaceDrafted(product.id)) {
+    applyFilters();
+  }
   persistLocalWorkspaceState();
 }
 
@@ -1645,7 +1667,9 @@ function setPrimaryImage(product, url) {
   const override = imageOverrideFor(product.id);
   override.excludedUrls.delete(url);
   override.primaryUrl = url;
-  markWorkspaceDrafted(product.id);
+  if (markWorkspaceDrafted(product.id)) {
+    applyFilters();
+  }
   persistLocalWorkspaceState();
 }
 
@@ -1785,6 +1809,7 @@ function clearLocalWorkspaceState() {
   state.imageOverrides = new Map();
   state.workspaceStatusOverrides = new Map();
   removeLocalWorkspaceState();
+  applyFilters();
   render();
   window.shopify?.toast?.show?.("Local QST edits cleared.");
 }

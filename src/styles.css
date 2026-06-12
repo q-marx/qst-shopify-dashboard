@@ -402,7 +402,7 @@ button:disabled,
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 190px)) auto auto;
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(130px, 180px)) auto auto;
   gap: 12px;
   align-items: end;
   padding: 16px;
