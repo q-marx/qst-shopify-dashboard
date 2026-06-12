@@ -377,6 +377,20 @@ export function buildTextPack(products, marketplace = "ebay", draftOverrides = {
     .join("\n\n---\n\n");
 }
 
+export function buildWorkspacePack(products, marketplace = "ebay", draftOverrides = {}) {
+  const label = marketplaceLabel(marketplace);
+  const pack = {
+    generatedAt: new Date().toISOString(),
+    mode: "qst_workspace_pack",
+    marketplace: label,
+    note:
+      "Browser-generated pack from read-only Shopify data. Image files are represented by source URLs; no Shopify product data is changed.",
+    products: products.map((product, index) => workspacePackProduct(product, marketplace, draftOverrides[product.id], index))
+  };
+
+  return JSON.stringify(pack, null, 2);
+}
+
 export function buildCsv(products, marketplace = "ebay", draftOverrides = {}) {
   const rows = [
     [
@@ -481,6 +495,115 @@ function productImageUrls(product) {
     .filter(Boolean)
     .filter((url, index, all) => all.indexOf(url) === index)
     .slice(0, 12);
+}
+
+function workspacePackProduct(product, marketplace, draftOverride, index) {
+  const draft = draftOverride || createDraft(product, marketplace);
+  const readiness = assessReadiness(product);
+  const imageManifest = productImageUrls(product).map((url, imageIndex) => ({
+    index: imageIndex + 1,
+    role: imageIndex === 0 ? "primary" : "gallery",
+    sourceUrl: url,
+    suggestedFilename: `${slugify(product.title || product.handle || `product-${index + 1}`)}-${imageIndex + 1}.jpg`
+  }));
+  const variants = product.variants?.length ? product.variants : [{}];
+
+  return {
+    folderName: slugify(product.title || product.handle || `product-${index + 1}`),
+    files: {
+      listingPack: "listing_pack.txt",
+      marketplaceListing: `listing_${slugify(marketplaceLabel(marketplace))}.txt`,
+      promoPage: "promo_page.html",
+      imageManifest: "image_manifest.json"
+    },
+    source: {
+      shopifyProductId: product.id,
+      handle: product.handle || "",
+      status: product.status || "",
+      productType: product.productType || "",
+      vendor: product.vendor || ""
+    },
+    readiness: {
+      score: readiness.score,
+      passed: readiness.passed,
+      total: readiness.total,
+      reviewItems: readiness.checks.filter((check) => !check.ok).map((check) => check.label)
+    },
+    listing: {
+      marketplace: marketplaceLabel(marketplace),
+      title: draft.title,
+      description: draft.description,
+      tags: draft.tags,
+      price: draft.price || "",
+      sku: draft.sku || ""
+    },
+    variants: variants.map((variant, variantIndex) => ({
+      index: variantIndex + 1,
+      shopifyVariantId: variant.id || "",
+      title: variant.title || "",
+      sku: variant.sku || generatedSku(product, variant, variantIndex),
+      price: variant.price || "",
+      quantity: normalizedQuantity(variant.inventoryQuantity),
+      options: variantOptionsText(variant)
+    })),
+    images: {
+      originalImageCount: imageManifest.length,
+      backgroundRemovedImageCount: 0,
+      browserPackLimitation:
+        "The Shopify app exports image source URLs. Use QST Desktop for local image downloads and background-removed image variants.",
+      manifest: imageManifest
+    },
+    promoPageHtml: buildPromoPageHtml(product, draft, imageManifest, marketplace)
+  };
+}
+
+function buildPromoPageHtml(product, draft, imageManifest, marketplace) {
+  const hero = imageManifest[0]?.sourceUrl || "";
+  const title = escapeHtmlText(draft.title || product.title || "Marketplace listing");
+  const description = escapeHtmlText(draft.description || "");
+  const tags = (draft.tags || []).map(escapeHtmlText).join(", ");
+  const imageMarkup = hero
+    ? `<img src="${escapeHtmlText(hero)}" alt="${title}">`
+    : "<span>No image available</span>";
+
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    `<title>${title}</title>`,
+    "<style>",
+    "body{font-family:Arial,sans-serif;margin:0;background:#f6f6f7;color:#202223}",
+    ".wrap{max-width:920px;margin:0 auto;padding:32px}",
+    ".hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,360px);gap:24px;align-items:start}",
+    ".media{border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#fff;min-height:260px;display:flex;align-items:center;justify-content:center}",
+    ".media img{width:100%;height:100%;object-fit:cover}",
+    ".meta{color:#5c5f62}.box{margin-top:24px;border:1px solid #ddd;border-radius:8px;background:#fff;padding:18px}",
+    "</style>",
+    "</head>",
+    "<body>",
+    '<main class="wrap">',
+    '<section class="hero">',
+    "<div>",
+    `<p class="meta">${escapeHtmlText(marketplaceLabel(marketplace))} draft from Shopify product data</p>`,
+    `<h1>${title}</h1>`,
+    `<p>${description.replace(/\n/g, "<br>")}</p>`,
+    `<p class="meta">Price: ${escapeHtmlText(draft.price || "-")} | SKU: ${escapeHtmlText(draft.sku || "-")}</p>`,
+    "</div>",
+    `<div class="media">${imageMarkup}</div>`,
+    "</section>",
+    '<section class="box">',
+    "<h2>Listing notes</h2>",
+    `<p><strong>Shopify handle:</strong> ${escapeHtmlText(product.handle || "-")}</p>`,
+    `<p><strong>Product type:</strong> ${escapeHtmlText(product.productType || "-")}</p>`,
+    `<p><strong>Tags:</strong> ${tags || "-"}</p>`,
+    `<p><strong>Images:</strong> ${imageManifest.length}</p>`,
+    "</section>",
+    "</main>",
+    "</body>",
+    "</html>"
+  ].join("");
 }
 
 function ebayPublishPlanProduct(product, setup, draftOverride) {
@@ -641,6 +764,23 @@ function smartTrim(value, limit) {
   const clipped = text.slice(0, limit + 1);
   const lastSpace = clipped.lastIndexOf(" ");
   return `${clipped.slice(0, lastSpace > 40 ? lastSpace : limit).trim()}...`;
+}
+
+function slugify(value) {
+  return String(value || "listing")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "listing";
+}
+
+function escapeHtmlText(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function csvCell(value) {

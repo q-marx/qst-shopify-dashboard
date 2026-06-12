@@ -6,6 +6,7 @@ import {
   buildEbayPrepSummary,
   buildEbayPublishPlan,
   buildTextPack,
+  buildWorkspacePack,
   createDraft,
   marketplaceLabel
 } from "./listing-utils.js";
@@ -205,6 +206,7 @@ function renderShell() {
         </div>
         <div class="export-actions">
           <button class="secondary-button" id="export-csv">Download CSV</button>
+          <button class="secondary-button" id="export-workspace-pack">Download workspace pack</button>
           <button class="primary-button" id="export-pack">Download listing pack</button>
         </div>
       </section>
@@ -249,6 +251,9 @@ function bindControls() {
   });
   document.querySelector("#export-csv").addEventListener("click", () => {
     exportSelected("csv");
+  });
+  document.querySelector("#export-workspace-pack").addEventListener("click", () => {
+    exportSelected("workspace-json");
   });
   document.querySelector("#export-pack").addEventListener("click", () => {
     exportSelected("txt");
@@ -1073,6 +1078,8 @@ function exportSelected(type) {
   const draftOverrides = getDraftOverridesForExport(products);
   if (type === "csv") {
     download(`${baseName}.csv`, buildCsv(products, state.marketplace, draftOverrides), "text/csv;charset=utf-8");
+  } else if (type === "workspace-json") {
+    download(`${baseName}.workspace.json`, buildWorkspacePack(products, state.marketplace, draftOverrides), "application/json;charset=utf-8");
   } else {
     download(`${baseName}.txt`, buildTextPack(products, state.marketplace, draftOverrides), "text/plain;charset=utf-8");
   }
