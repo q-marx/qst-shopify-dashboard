@@ -20,6 +20,7 @@ const state = {
   filteredProducts: [],
   selectedIds: new Set(),
   draftOverrides: new Map(),
+  imageOverrides: new Map(),
   activeProductId: null,
   marketplace: "ebay",
   query: "",
@@ -60,6 +61,7 @@ async function refreshProducts() {
     state.products = result.products;
     state.source = result.source;
     state.selectedIds = new Set();
+    state.imageOverrides = new Map();
     state.activeProductId = state.products[0]?.id ?? null;
     applyFilters();
   } catch (error) {
@@ -321,9 +323,10 @@ function renderSourceCard() {
 }
 
 function renderMetrics() {
-  const ready = state.products.filter((product) => assessReadiness(product).state === "ready").length;
-  const review = state.products.filter((product) => assessReadiness(product).state === "review").length;
-  const needsWork = state.products.filter((product) => assessReadiness(product).state === "needs-work").length;
+  const curatedProducts = state.products.map(applyImageCuration);
+  const ready = curatedProducts.filter((product) => assessReadiness(product).state === "ready").length;
+  const review = curatedProducts.filter((product) => assessReadiness(product).state === "review").length;
+  const needsWork = curatedProducts.filter((product) => assessReadiness(product).state === "needs-work").length;
   const variants = state.products.reduce((total, product) => total + (product.variants?.length ?? 0), 0);
 
   document.querySelector("#metrics").innerHTML = [
@@ -357,9 +360,9 @@ function renderEbayWorkflow() {
   }
 
   panel.hidden = false;
-  const sourceProducts = state.filteredProducts;
+  const sourceProducts = state.filteredProducts.map(applyImageCuration);
   const summary = buildEbayPrepSummary(sourceProducts);
-  const selected = getSelectedProducts();
+  const selected = getSelectedProducts().map(applyImageCuration);
   const selectedSummary = buildEbayPrepSummary(selected);
   const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
   const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
@@ -849,7 +852,8 @@ function renderProducts() {
 }
 
 function productRow(product) {
-  const readiness = assessReadiness(product);
+  const curatedProduct = applyImageCuration(product);
+  const readiness = assessReadiness(curatedProduct);
   const active = product.id === state.activeProductId;
   const checked = state.selectedIds.has(product.id);
   const firstVariant = product.variants?.[0] ?? {};
@@ -858,7 +862,7 @@ function productRow(product) {
     <article class="product-row ${active ? "active" : ""}">
       <input type="checkbox" data-select-product="${escapeHtml(product.id)}" ${checked ? "checked" : ""} aria-label="Select ${escapeHtml(product.title)}" />
       <button class="product-main" data-open-product="${escapeHtml(product.id)}">
-        <span class="thumb">${product.imageUrl ? `<img src="${escapeHtml(product.imageUrl)}" alt="" />` : ""}</span>
+        <span class="thumb">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : ""}</span>
         <span class="product-copy">
           <strong>${escapeHtml(product.title)}</strong>
           <small>${escapeHtml([product.productType, firstVariant.sku, product.status].filter(Boolean).join(" - "))}</small>
@@ -880,13 +884,15 @@ function renderDraft() {
     return;
   }
 
-  const readiness = assessReadiness(product);
+  const curatedProduct = applyImageCuration(product);
+  const readiness = assessReadiness(curatedProduct);
   const draft = getDraft(product);
 
   subtitle.textContent = `${marketplaceLabel(state.marketplace)} draft for ${product.title}`;
   content.innerHTML = `
     <div class="draft-stack">
-      <div class="draft-image">${product.imageUrl ? `<img src="${escapeHtml(product.imageUrl)}" alt="" />` : "<span>No image</span>"}</div>
+      <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
+      ${imageCurationPanel(product)}
       <label>
         <span>Marketplace title</span>
         <input type="text" data-draft-field="title" value="${escapeAttribute(draft.title)}" />
@@ -899,7 +905,7 @@ function renderDraft() {
         <span>Suggested tags</span>
         <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
       </label>
-      ${state.marketplace === "ebay" ? ebayDraftStatus(product) : ""}
+      ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
       <div class="checklist">
         <h3>Readiness checks</h3>
         ${readiness.checks.map(checkItem).join("")}
@@ -916,11 +922,14 @@ function renderDraft() {
       updateDraftOverride(product, event.currentTarget.dataset.draftField, event.currentTarget.value);
     });
   });
+  bindImageCurationControls(content, product);
 }
 
 function getDraft(product) {
   const key = draftKey(product.id, state.marketplace);
-  return state.draftOverrides.get(key) || createDraft(product, state.marketplace);
+  const curatedProduct = applyImageCuration(product);
+  const override = state.draftOverrides.get(key);
+  return override ? { ...override, imageUrl: curatedProduct.imageUrl } : createDraft(curatedProduct, state.marketplace);
 }
 
 function ebayDraftStatus(product) {
@@ -943,6 +952,79 @@ function ebayDraftStatus(product) {
       <p class="${prep.blockers.length ? "inline-error" : "muted-copy"}">${escapeHtml(blockerText)}</p>
     </div>
   `;
+}
+
+function imageCurationPanel(product) {
+  const entries = productImageEntries(product);
+  if (!entries.length) {
+    return `
+      <div class="image-curation">
+        <div class="image-curation-heading">
+          <h3>Export images</h3>
+          <p>No Shopify images were returned for this product.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  const override = imageOverrideFor(product.id);
+  const includedCount = entries.filter((entry) => !override.excludedUrls.has(entry.url)).length;
+  const primaryUrl = primaryImageUrl(product, entries, override);
+
+  return `
+    <div class="image-curation">
+      <div class="image-curation-heading">
+        <div>
+          <h3>Export images</h3>
+          <p>Choose the primary image and image URLs included in browser exports. Shopify is not changed.</p>
+        </div>
+        <span>${includedCount}/${entries.length} included</span>
+      </div>
+      <div class="image-choice-list">
+        ${entries.map((entry) => imageChoiceRow(entry, override, primaryUrl)).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function imageChoiceRow(entry, override, primaryUrl) {
+  const included = !override.excludedUrls.has(entry.url);
+  const primary = included && entry.url === primaryUrl;
+
+  return `
+    <div class="image-choice ${primary ? "primary" : ""}">
+      <label class="image-include">
+        <input type="checkbox" data-image-include="${escapeAttribute(entry.url)}" ${included ? "checked" : ""} />
+        <span>Include</span>
+      </label>
+      <img src="${escapeAttribute(entry.url)}" alt="" />
+      <div class="image-choice-copy">
+        <strong>${primary ? "Primary image" : entry.role}</strong>
+        <span>${escapeHtml(entry.altText || entry.url)}</span>
+      </div>
+      <button class="secondary-button image-primary-button" data-image-primary="${escapeAttribute(entry.url)}" ${primary || !included ? "disabled" : ""}>Set primary</button>
+    </div>
+  `;
+}
+
+function bindImageCurationControls(container, product) {
+  container.querySelectorAll("[data-image-include]").forEach((checkbox) => {
+    checkbox.addEventListener("change", (event) => {
+      setImageIncluded(product, event.currentTarget.dataset.imageInclude, event.currentTarget.checked);
+      renderProducts();
+      renderDraft();
+      renderEbayWorkflow();
+    });
+  });
+
+  container.querySelectorAll("[data-image-primary]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      setPrimaryImage(product, event.currentTarget.dataset.imagePrimary);
+      renderProducts();
+      renderDraft();
+      renderEbayWorkflow();
+    });
+  });
 }
 
 function getDraftOverridesForExport(products) {
@@ -1017,10 +1099,108 @@ function getSelectedProducts() {
   return state.products.filter((product) => state.selectedIds.has(product.id));
 }
 
+function getSelectedProductsForExport() {
+  return getSelectedProducts().map(applyImageCuration);
+}
+
+function productImageEntries(product) {
+  const entries = [
+    product.imageUrl
+      ? {
+          url: product.imageUrl,
+          altText: "Featured image",
+          role: "featured"
+        }
+      : null,
+    ...(product.images ?? []).map((image, index) => ({
+      url: image.url,
+      altText: image.altText || "",
+      role: index === 0 ? "gallery" : `gallery ${index + 1}`
+    }))
+  ]
+    .filter((entry) => entry?.url)
+    .filter((entry, index, all) => all.findIndex((candidate) => candidate.url === entry.url) === index);
+
+  return entries;
+}
+
+function imageOverrideFor(productId) {
+  const existing = state.imageOverrides.get(productId);
+  if (existing) {
+    return existing;
+  }
+
+  const next = {
+    primaryUrl: "",
+    excludedUrls: new Set()
+  };
+  state.imageOverrides.set(productId, next);
+  return next;
+}
+
+function primaryImageUrl(product, entries = productImageEntries(product), override = imageOverrideFor(product.id)) {
+  const includedEntries = entries.filter((entry) => !override.excludedUrls.has(entry.url));
+  if (!includedEntries.length) {
+    return "";
+  }
+
+  if (override.primaryUrl && includedEntries.some((entry) => entry.url === override.primaryUrl)) {
+    return override.primaryUrl;
+  }
+
+  return includedEntries[0].url;
+}
+
+function setImageIncluded(product, url, included) {
+  const override = imageOverrideFor(product.id);
+  if (included) {
+    override.excludedUrls.delete(url);
+  } else {
+    override.excludedUrls.add(url);
+    if (override.primaryUrl === url) {
+      override.primaryUrl = "";
+    }
+  }
+}
+
+function setPrimaryImage(product, url) {
+  const override = imageOverrideFor(product.id);
+  override.excludedUrls.delete(url);
+  override.primaryUrl = url;
+}
+
+function applyImageCuration(product) {
+  const entries = productImageEntries(product);
+  if (!entries.length) {
+    return {
+      ...product,
+      imageUrl: "",
+      images: []
+    };
+  }
+
+  const override = imageOverrideFor(product.id);
+  const includedEntries = entries.filter((entry) => !override.excludedUrls.has(entry.url));
+  const primaryUrl = primaryImageUrl(product, entries, override);
+  const sortedEntries = [
+    ...includedEntries.filter((entry) => entry.url === primaryUrl),
+    ...includedEntries.filter((entry) => entry.url !== primaryUrl)
+  ];
+
+  return {
+    ...product,
+    imageUrl: primaryUrl,
+    images: sortedEntries.map((entry) => ({
+      url: entry.url,
+      altText: entry.altText
+    }))
+  };
+}
+
 function selectEbayReadyProducts() {
   state.selectedIds = new Set(
     state.filteredProducts
-      .filter((product) => assessEbayPrep(product).state === "ready")
+      .filter((product) => assessEbayPrep(applyImageCuration(product)).state === "ready")
       .map((product) => product.id)
   );
   render();
@@ -1028,9 +1208,11 @@ function selectEbayReadyProducts() {
 }
 
 function downloadEbayBatch() {
-  let products = getSelectedProducts();
+  let products = getSelectedProductsForExport();
   if (!products.length) {
-    products = state.filteredProducts.filter((product) => assessEbayPrep(product).state === "ready");
+    products = state.filteredProducts
+      .map(applyImageCuration)
+      .filter((product) => assessEbayPrep(product).state === "ready");
   }
 
   if (!products.length) {
@@ -1045,9 +1227,11 @@ function downloadEbayBatch() {
 }
 
 function downloadEbayPublishPlan() {
-  let products = getSelectedProducts();
+  let products = getSelectedProductsForExport();
   if (!products.length) {
-    products = state.filteredProducts.filter((product) => assessEbayPrep(product).state === "ready");
+    products = state.filteredProducts
+      .map(applyImageCuration)
+      .filter((product) => assessEbayPrep(product).state === "ready");
   }
 
   if (!products.length) {
@@ -1067,7 +1251,7 @@ function downloadEbayPublishPlan() {
 }
 
 function exportSelected(type) {
-  const products = getSelectedProducts();
+  const products = getSelectedProductsForExport();
   if (!products.length) {
     window.shopify?.toast?.show?.("Select one or more products first.");
     return;

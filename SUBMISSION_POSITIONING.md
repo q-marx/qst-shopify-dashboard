@@ -12,6 +12,7 @@ QST Listing Workspace is the Shopify Admin app. It must be useful on its own:
 - tracks eBay publishing setup readiness for seller account, policies, dispatch location, and fallback category
 - exports an eBay publish-plan JSON file for reviewing the inventory item, offer, and publish sequence before any live publishing workflow
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest
+- supports export-only primary/included image selection without editing Shopify media
 - exports copy-ready marketplace packs and CSV files
 - supports eBay, Etsy, Facebook Marketplace, Vinted, Depop, and Gumtree style preparation
 
@@ -91,6 +92,7 @@ Feature bullets:
 - eBay setup tracker for account, policy, dispatch location, and fallback category readiness
 - eBay publish-plan export for reviewing the inventory item, offer, and publish sequence
 - QST workspace pack export with listing data, promo-page HTML, variants, and image URL manifest
+- Export-only image selection for choosing primary/included listing images without changing Shopify
 - Draft marketplace titles, descriptions, and tags
 - Export selected products as CSV or copy-ready listing packs
 - Optional Windows companion for larger local workflows and advanced eBay publishing automation

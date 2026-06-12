@@ -25,7 +25,7 @@ const PRODUCTS_QUERY = `
             }
           }
         }
-        images(first: 4) {
+        images(first: 12) {
           nodes {
             url
             altText

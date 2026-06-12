@@ -574,6 +574,110 @@ button:focus-visible {
   overflow: hidden;
 }
 
+.image-curation {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.image-curation-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.image-curation-heading h3 {
+  margin-bottom: 4px;
+}
+
+.image-curation-heading p,
+.image-curation-heading span {
+  margin-bottom: 0;
+  color: #6d7175;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.image-curation-heading span {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.image-choice-list {
+  display: grid;
+  gap: 10px;
+}
+
+.image-choice {
+  display: grid;
+  grid-template-columns: 70px 54px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #eff1f2;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fbfbfc;
+}
+
+.image-choice.primary {
+  border-color: #008060;
+  background: #f0f8f5;
+}
+
+.image-choice img {
+  width: 54px;
+  height: 54px;
+  border: 1px solid #dcdfe4;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f1f2f3;
+}
+
+.image-include {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.image-include input {
+  width: 16px;
+  height: 16px;
+}
+
+.image-include span {
+  margin-bottom: 0;
+  color: #202223;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.image-choice-copy {
+  min-width: 0;
+}
+
+.image-choice-copy strong,
+.image-choice-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-choice-copy span {
+  margin-top: 3px;
+  color: #6d7175;
+  font-size: 12px;
+}
+
+.image-primary-button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
 .checklist,
 .variant-box,
 .ebay-detail {
@@ -737,6 +841,15 @@ button:focus-visible {
   .product-row .readiness-pill {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .image-choice {
+    grid-template-columns: 1fr 54px;
+  }
+
+  .image-choice-copy,
+  .image-primary-button {
+    grid-column: 1 / -1;
   }
 
   .export-bar {
