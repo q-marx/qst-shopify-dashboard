@@ -14,7 +14,9 @@ Use this document as the source of truth for the current Shopify dashboard proje
 - Shopify app handle: `qst-listing-workspace`
 - Client ID in config: `f0517dd50928e4546916d0c07b379e87`
 - Required Shopify scope: `read_products`
-- Latest confirmed Git commit before this document: `aab8efa Clarify desktop upgrade path`
+- Render Blueprint source of truth: `render.yaml` on GitHub `main`
+- Current intended Render database: `qst-shopify-dashboard-db-frankfurt`
+- Current intended Render database region: Frankfurt
 
 The direct Render URL is not supposed to show live Shopify products. Live products load inside Shopify Admin because the dashboard uses Shopify App Bridge direct Admin GraphQL access. Direct browser visits can only show an empty or preview state because there is no embedded Shopify session.
 
@@ -53,28 +55,47 @@ What it means:
 Why it is happening:
 
 - The Render web service is in Frankfurt.
-- The current database shown in Render is in Oregon.
+- The old database shown in Render was in Oregon.
 - The web service appears to be using an internal Render database hostname that is only reachable from services in the same Render region.
+- The old database was Blueprint-managed, so deleting it manually can trigger this Render warning:
+
+```text
+This resource is managed by a Blueprint.
+To prevent this resource from being recreated after deletion, first remove it from Blueprint qst-shopify-dashboard or disconnect the Blueprint entirely.
+```
 
 Render's own docs say internal database URLs are for Render services in the same region, while external URLs are for connections from outside that private regional network.
+Render's Blueprint docs also say syncing never deletes existing resources automatically. To delete a Blueprint-managed resource, remove it from the Blueprint first, then delete it in the Dashboard.
 
-### Fast Fix
+### Current Clean Fix
 
-Use this if you want to get working quickly with the existing Oregon database.
+Use this path now. Do not create a new Blueprint instance.
 
-1. Open Render Dashboard.
-2. Open the project containing `qst-shopify-dashboard`.
-3. Open the database service, currently shown as `qst-shopify-dashboard-db`.
-4. Open its connection details.
-5. Copy the full `External Database URL`.
-6. Open the web service `qst-shopify-dashboard`.
-7. Go to `Environment`.
-8. Find `DATABASE_URL`.
-9. Replace the existing value with the database's full `External Database URL`.
-10. Save changes.
-11. Redeploy the web service.
-12. Wait until Render says the deployment is live.
-13. Run:
+1. Confirm GitHub `main` contains the current `render.yaml`.
+2. Open Render Dashboard.
+3. Go to `Blueprints`.
+4. Open the existing Blueprint named `qst-shopify-dashboard`.
+5. Do not create a new Blueprint.
+6. Click `Manual Sync` or `Sync`.
+7. Confirm Render is syncing from `q-marx/qst-shopify-dashboard` on branch `main`.
+8. The sync should create or reconcile:
+
+```text
+Web service: qst-shopify-dashboard
+Region: Frankfurt
+
+Database: qst-shopify-dashboard-db-frankfurt
+Region: Frankfurt
+```
+
+9. The web service environment should get:
+
+```text
+DATABASE_URL = fromDatabase qst-shopify-dashboard-db-frankfurt connectionString
+```
+
+10. Wait until the database says `Available` and the web service redeploy is live.
+11. Run:
 
 ```powershell
 cd "C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\shopify-dashboard"
@@ -92,27 +113,31 @@ Expected result:
 }
 ```
 
-### Clean Fix
+### If The Old Oregon Database Still Exists
 
-Use this when you want the clean production setup.
+If `qst-shopify-dashboard-db` in Oregon still exists and Render blocks the Frankfurt database with:
 
-1. Open Render Dashboard.
-2. Create or Blueprint-sync a Postgres database named `qst-shopify-dashboard-db-frankfurt`.
-3. Put it in the same region as the web service: Frankfurt.
-4. Open the new Frankfurt database.
-5. Copy its `Internal Database URL`.
-6. Open the web service `qst-shopify-dashboard`.
-7. Go to `Environment`.
-8. Set `DATABASE_URL` to the Frankfurt database's `Internal Database URL`.
-9. Redeploy the web service.
-10. Run:
+```text
+cannot have more than one active free tier database
+```
+
+use this sequence:
+
+1. Make sure the existing Blueprint has synced the latest GitHub `main`.
+2. Confirm the current `render.yaml` does not define `qst-shopify-dashboard-db`; it defines `qst-shopify-dashboard-db-frankfurt`.
+3. Open the old Oregon database `qst-shopify-dashboard-db`.
+4. If Render no longer warns that it is managed by the Blueprint, delete it.
+5. If Render still warns that it is managed by the Blueprint, do not keep deleting it blindly. Sync the existing Blueprint from the latest `main` first.
+6. After the old Oregon database is deleted, run `Manual Sync` on the existing Blueprint again.
+7. Confirm the Frankfurt database is created.
+8. Run:
 
 ```powershell
 cd "C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\shopify-dashboard"
 npm run render:health
 ```
 
-Expected result is the same:
+Expected result:
 
 ```json
 {
@@ -122,6 +147,28 @@ Expected result is the same:
   "storagePersistence": "durable"
 }
 ```
+
+### If You Already Deleted The Old Oregon Database
+
+That is workable. Do not create a new Blueprint. Go straight to the existing Blueprint named `qst-shopify-dashboard`, run `Manual Sync`, and confirm it creates `qst-shopify-dashboard-db-frankfurt`.
+
+If the old `qst-shopify-dashboard-db` comes back after sync, Render is syncing an old Blueprint definition or the wrong repository/branch. Stop and check that the Blueprint is connected to:
+
+```text
+q-marx/qst-shopify-dashboard
+branch: main
+render.yaml
+```
+
+### Fast Fix Fallback
+
+Only use this if the clean Blueprint path is blocked and you need temporary durability.
+
+1. Use the existing database's `External Database URL`.
+2. Put it directly into the web service `DATABASE_URL`.
+3. Redeploy.
+
+This is not the preferred final setup because it keeps the web service and database in different regions.
 
 Do not submit to Shopify while `/api/health` still reports `memory_fallback`.
 

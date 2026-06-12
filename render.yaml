@@ -40,6 +40,8 @@ services:
           property: connectionString
 
 databases:
+  # Keep this database in the same region as qst-shopify-dashboard so Render's
+  # internal connection string resolves for the web service.
   - name: qst-shopify-dashboard-db-frankfurt
     databaseName: qst_shopify_dashboard
     user: qst_user

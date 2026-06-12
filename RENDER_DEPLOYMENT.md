@@ -33,6 +33,15 @@ If the Blueprint already exists and Render does not auto-sync after a GitHub pus
 page in Render and click **Manual Sync**. The sync should show a new database named
 `qst-shopify-dashboard-db-frankfurt` and an update to the web service's `DATABASE_URL`.
 
+Do not create a second Blueprint for this app. The existing Blueprint named `qst-shopify-dashboard`
+should be synced from GitHub `main`.
+
+If Render warns that an old database is managed by a Blueprint, do not keep deleting it blindly. Render
+can recreate a deleted Blueprint-managed resource on the next sync if the Blueprint still defines it.
+First sync the existing Blueprint from the current `render.yaml`, which defines
+`qst-shopify-dashboard-db-frankfurt` and no longer defines the old Oregon database. Then delete any
+remaining old Oregon database only after it is no longer part of the synced Blueprint.
+
 ## Fill these Render environment values
 
 ```env
@@ -95,13 +104,16 @@ Check:
 - no Render logs show webhook or token verification errors
 
 If `/api/health` reports a `getaddrinfo ENOTFOUND dpg-...` storage error, the app is trying to use a
-Render internal database URL that is not reachable from the web service's region. The current project
-has the web service in Frankfurt and the existing database in Oregon, so either:
+Render internal database URL that is not reachable from the web service's region. The intended clean
+fix is:
 
-- Fast fix: copy the Oregon database's **External Database URL** into the web service's `DATABASE_URL`,
-  then redeploy the web service.
-- Clean fix: create or Blueprint-sync `qst-shopify-dashboard-db-frankfurt` in Frankfurt, then set the
-  web service's `DATABASE_URL` to that Frankfurt database's **Internal Database URL**.
+- Sync the existing `qst-shopify-dashboard` Blueprint from GitHub `main`.
+- Confirm it creates `qst-shopify-dashboard-db-frankfurt` in Frankfurt.
+- Confirm the web service `DATABASE_URL` is attached to that Frankfurt database.
+- Redeploy the web service.
+
+Temporary fallback only: copy the old Oregon database's **External Database URL** into the web service's
+`DATABASE_URL`, then redeploy the web service.
 
 The app can keep running with `"storage": "memory_fallback"` while this is corrected, but pairing
 codes are ephemeral until Postgres is ready.

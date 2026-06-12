@@ -25,8 +25,10 @@ if (health.postgresReady !== true) {
       looksLikeInternalRenderHost
         ? "The app appears to be using an internal Render database URL that is not reachable from this web service region."
         : "Check the Render DATABASE_URL value and database status.",
-      "Fast fix: set DATABASE_URL to the existing database's External Database URL, then redeploy.",
-      "Clean fix: create/sync qst-shopify-dashboard-db-frankfurt in Frankfurt and use its Internal Database URL.",
+      "Clean fix: open the existing Render Blueprint qst-shopify-dashboard and run Manual Sync from GitHub main.",
+      "The current render.yaml defines qst-shopify-dashboard-db-frankfurt in Frankfurt and attaches DATABASE_URL from that database.",
+      "If an old Oregon database is still Blueprint-managed, sync the current Blueprint first, then delete the old database only after it is no longer defined.",
+      "Temporary fallback: set DATABASE_URL to an existing database's External Database URL, then redeploy.",
       `Current storage: ${health.storage}`,
       `Storage error: ${health.storageError || "none"}`
     ].join("\n")
