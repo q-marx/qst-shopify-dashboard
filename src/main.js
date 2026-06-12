@@ -22,6 +22,14 @@ const WORKSPACE_STATUS_OPTIONS = [
   { value: "exported", label: "Exported", className: "ok" }
 ];
 const WORKSPACE_STATUS_VALUES = new Set(WORKSPACE_STATUS_OPTIONS.map((option) => option.value));
+const MARKETPLACE_TITLE_LIMITS = {
+  ebay: 80,
+  etsy: 140,
+  vinted: 80,
+  depop: 128,
+  facebook: 100,
+  gumtree: 100
+};
 
 const state = {
   products: [],
@@ -187,6 +195,8 @@ function renderShell() {
         <button class="secondary-button" id="refresh-button">Refresh</button>
       </section>
 
+      <section class="bulk-panel" id="bulk-panel"></section>
+
       <section class="workspace-grid">
         <div class="panel product-panel">
           <div class="panel-heading">
@@ -308,6 +318,7 @@ function render() {
   renderMetrics();
   renderAccountPanel();
   renderEbayWorkflow();
+  renderBulkPanel();
   renderProducts();
   renderDraft();
   renderExportSummary();
@@ -460,6 +471,94 @@ function renderEbayWorkflow() {
   panel.querySelector("#download-ebay-plan")?.addEventListener("click", downloadEbayPublishPlan);
   panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
   panel.querySelector("#save-ebay-setup")?.addEventListener("click", saveEbaySetupFromPanel);
+}
+
+function renderBulkPanel() {
+  const panel = document.querySelector("#bulk-panel");
+  if (!panel) {
+    return;
+  }
+
+  const selected = getSelectedProducts();
+  const visibleCount = state.filteredProducts.length;
+  const selectedText = selected.length
+    ? `${selected.length} selected for ${marketplaceLabel(state.marketplace)}`
+    : "No products selected";
+
+  panel.innerHTML = `
+    <div class="bulk-copy">
+      <p class="eyebrow">Bulk local prep</p>
+      <h2>Apply draft changes to selected products</h2>
+      <p>Use browser-only bulk edits for listing preparation. Shopify product data is not changed.</p>
+    </div>
+    <div class="bulk-controls">
+      <span class="batch-state">${escapeHtml(selectedText)}</span>
+      <label>
+        <span>Status</span>
+        <select id="bulk-status">
+          <option value="">Keep status</option>
+          ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Title prefix</span>
+        <input id="bulk-title-prefix" type="text" placeholder="Example: Handmade" />
+      </label>
+      <label>
+        <span>Append tag</span>
+        <input id="bulk-tag" type="text" placeholder="Example: ebay-ready" />
+      </label>
+      <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Select visible</button>
+      <button class="primary-button" id="bulk-apply" ${selected.length ? "" : "disabled"}>Apply bulk prep</button>
+    </div>
+  `;
+
+  panel.querySelector("#bulk-select-visible")?.addEventListener("click", () => {
+    state.selectedIds = new Set(state.filteredProducts.map((product) => product.id));
+    render();
+  });
+  panel.querySelector("#bulk-apply")?.addEventListener("click", applyBulkLocalPrep);
+}
+
+function applyBulkLocalPrep() {
+  const products = getSelectedProducts();
+  if (!products.length) {
+    window.shopify?.toast?.show?.("Select products before applying bulk prep.");
+    return;
+  }
+
+  const status = document.querySelector("#bulk-status")?.value || "";
+  const titlePrefix = document.querySelector("#bulk-title-prefix")?.value.trim() || "";
+  const tag = document.querySelector("#bulk-tag")?.value.trim() || "";
+  const hasDraftChange = Boolean(titlePrefix || tag);
+
+  if (!status && !hasDraftChange) {
+    window.shopify?.toast?.show?.("Choose a status, title prefix, or tag first.");
+    return;
+  }
+
+  const updatedAt = new Date().toISOString();
+  for (const product of products) {
+    if (hasDraftChange) {
+      const draft = getDraft(product);
+      const next = {
+        ...draft,
+        title: titlePrefix ? titleWithPrefix(draft.title, titlePrefix, state.marketplace) : draft.title,
+        tags: tag ? tagsWithAppended(draft.tags, tag) : draft.tags
+      };
+      state.draftOverrides.set(draftKey(product.id, state.marketplace), next);
+    }
+
+    if (status) {
+      setWorkspaceStatusRecord(product.id, status, updatedAt);
+    } else if (hasDraftChange) {
+      setWorkspaceStatusRecord(product.id, "drafted", updatedAt);
+    }
+  }
+
+  persistLocalWorkspaceState();
+  render();
+  window.shopify?.toast?.show?.("Bulk prep applied locally.");
 }
 
 function ebaySetupCheck(key, label, checked) {
@@ -859,6 +958,7 @@ function renderProducts() {
         state.selectedIds.delete(id);
       }
       renderEbayWorkflow();
+      renderBulkPanel();
       renderExportSummary();
     });
   });
@@ -1316,6 +1416,7 @@ function saveWorkspaceStatus(productId, updates = {}, options = {}) {
   if (options.render !== false) {
     renderMetrics();
     renderProducts();
+    renderBulkPanel();
     renderDraft();
     renderEbayWorkflow();
   }
@@ -1336,19 +1437,36 @@ function markWorkspaceDrafted(productId) {
 }
 
 function markProductsWorkspaceStatus(products, status) {
+  const updatedAt = new Date().toISOString();
   for (const product of products) {
-    const current = workspaceStatusFor(product.id);
-    state.workspaceStatusOverrides.set(workspaceKey(product.id), {
-      status,
-      note: current.note,
-      updatedAt: new Date().toISOString()
-    });
+    setWorkspaceStatusRecord(product.id, status, updatedAt);
   }
   persistLocalWorkspaceState();
   renderMetrics();
   renderProducts();
+  renderBulkPanel();
   renderDraft();
   renderEbayWorkflow();
+}
+
+function setWorkspaceStatusRecord(productId, status, updatedAt = new Date().toISOString()) {
+  const current = workspaceStatusFor(productId);
+  const next = normalizeWorkspaceStatus({
+    ...current,
+    status,
+    updatedAt
+  });
+
+  if (next.status === "not_started" && !next.note.trim()) {
+    state.workspaceStatusOverrides.delete(workspaceKey(productId));
+    return;
+  }
+
+  state.workspaceStatusOverrides.set(workspaceKey(productId), {
+    status: next.status,
+    note: next.note,
+    updatedAt: next.updatedAt
+  });
 }
 
 function refreshActiveWorkspaceStatusDom(productId) {
@@ -1421,6 +1539,44 @@ function getSelectedProducts() {
 
 function getSelectedProductsForExport() {
   return getSelectedProducts().map(applyImageCuration);
+}
+
+function titleWithPrefix(title, prefix, marketplace) {
+  const cleanPrefix = String(prefix || "").trim();
+  const cleanTitle = String(title || "").trim();
+  if (!cleanPrefix) {
+    return cleanTitle;
+  }
+
+  const lowerTitle = cleanTitle.toLowerCase();
+  const lowerPrefix = cleanPrefix.toLowerCase();
+  const combined = lowerTitle.startsWith(`${lowerPrefix} `) || lowerTitle === lowerPrefix
+    ? cleanTitle
+    : `${cleanPrefix} ${cleanTitle}`.trim();
+
+  return trimToMarketplaceTitle(combined, marketplace);
+}
+
+function tagsWithAppended(tags, tag) {
+  const next = Array.isArray(tags) ? [...tags] : [];
+  const cleanTag = String(tag || "").trim();
+  if (!cleanTag) {
+    return next;
+  }
+
+  return next.some((candidate) => candidate.toLowerCase() === cleanTag.toLowerCase())
+    ? next
+    : [...next, cleanTag];
+}
+
+function trimToMarketplaceTitle(value, marketplace) {
+  const limit = MARKETPLACE_TITLE_LIMITS[marketplace] || 80;
+  const text = String(value || "").trim();
+  if (text.length <= limit) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(limit - 3, 1)).trimEnd()}...`;
 }
 
 function productImageEntries(product) {

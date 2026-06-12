@@ -16,6 +16,7 @@ QST Listing Workspace is the Shopify Admin app. It must be useful on its own:
 - saves local draft and export-image choices in the merchant's browser without writing back to Shopify
 - tracks browser-local marketplace work status per product so drafted, ready, and exported items remain visible
 - provides copy-ready listing actions for titles, descriptions, tags, full packs, and single-product downloads
+- applies browser-local bulk prep to selected products, including status updates, title prefixes, and tag appends
 - exports copy-ready marketplace packs and CSV files
 - supports eBay, Etsy, Facebook Marketplace, Vinted, Depop, and Gumtree style preparation
 
@@ -101,6 +102,7 @@ Feature bullets:
 - Browser-local draft and image persistence for continuing marketplace preparation after refresh
 - Product-level local marketplace status for tracking drafted, ready, and exported work
 - Copy-ready draft actions for titles, descriptions, tags, and individual listing packs
+- Browser-local bulk prep for selected products without editing Shopify product records
 - Draft marketplace titles, descriptions, and tags
 - Export selected products as CSV or copy-ready listing packs
 - Optional Windows companion for larger local workflows and advanced eBay publishing automation

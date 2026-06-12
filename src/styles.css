@@ -48,6 +48,7 @@ button {
 .panel,
 .export-bar,
 .toolbar,
+.bulk-panel,
 .workflow-panel,
 .account-card,
 .metric-card,
@@ -406,6 +407,38 @@ button:disabled,
   align-items: end;
   padding: 16px;
   margin-bottom: 16px;
+}
+
+.bulk-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  gap: 18px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.bulk-copy h2 {
+  margin-bottom: 6px;
+}
+
+.bulk-copy p:last-child {
+  margin-bottom: 0;
+  color: #5c5f62;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.bulk-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.bulk-controls .batch-state {
+  grid-column: 1 / -1;
+  text-align: left;
 }
 
 label span {
@@ -873,6 +906,7 @@ button:focus-visible {
   .hero-band,
   .workspace-grid,
   .toolbar,
+  .bulk-panel,
   .workflow-panel {
     grid-template-columns: 1fr;
   }
@@ -886,7 +920,8 @@ button:focus-visible {
   }
 
   .setup-checks,
-  .setup-fields {
+  .setup-fields,
+  .bulk-controls {
     grid-template-columns: 1fr;
   }
 
@@ -903,6 +938,7 @@ button:focus-visible {
 
   .hero-band,
   .toolbar,
+  .bulk-panel,
   .workflow-panel,
   .panel-heading,
   .export-bar {
