@@ -262,6 +262,9 @@ client_id = "f0517dd50928e4546916d0c07b379e87"
 application_url = "https://qst-shopify-dashboard.onrender.com"
 embedded = true
 
+[build]
+automatically_update_urls_on_dev = false
+
 [access_scopes]
 scopes = "read_products"
 optional_scopes = []
@@ -289,7 +292,7 @@ Deploy the config:
 
 ```powershell
 cd "C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\shopify-dashboard"
-shopify app deploy --config qst-listing-workspace
+shopify app deploy --config qst-listing-workspace --allow-updates
 ```
 
 After deploy:
@@ -301,6 +304,12 @@ After deploy:
 5. Confirm App URL is `https://qst-shopify-dashboard.onrender.com`.
 6. Confirm redirect URL is `https://qst-shopify-dashboard.onrender.com/auth/callback`.
 7. Confirm required compliance webhooks are present in the app version.
+
+If Shopify Admin shows `Server Not Found` for a `trycloudflare.com` host, that is a stale Shopify CLI dev preview, not the production app. Click `Clean dev preview` in the Shopify Admin dev console, close the app tab, and reopen:
+
+```text
+https://admin.shopify.com/store/sst-test-site/apps/qst-listing-workspace/
+```
 
 ## 5. Configure Shopify App Pricing
 

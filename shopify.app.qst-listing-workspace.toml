@@ -6,7 +6,9 @@ application_url = "https://qst-shopify-dashboard.onrender.com"
 embedded = true
 
 [build]
-automatically_update_urls_on_dev = true
+# Keep production app URLs pointed at Render. Temporary Shopify CLI tunnels should
+# not replace the live URL used for App Store submission.
+automatically_update_urls_on_dev = false
 
 [access_scopes]
 scopes = "read_products"

@@ -68,7 +68,7 @@ uri = "/webhooks"
 shopify app dev --config qst-listing-workspace
 ```
 
-The dev server now runs through Express and mounts Vite internally, so Shopify CLI still uses port `5173`.
+The dev server now runs through Express and mounts Vite internally, so Shopify CLI still uses port `5173`. The config keeps `automatically_update_urls_on_dev = false` so temporary Cloudflare dev tunnels do not replace the production Render URL.
 
 ## Subscription And Desktop Flow
 
@@ -132,4 +132,4 @@ redirect_urls = [
 ]
 ```
 
-Then run `shopify app deploy --config qst-listing-workspace` so Shopify uses the production URL.
+Then run `shopify app deploy --config qst-listing-workspace --allow-updates` so Shopify uses the production URL. If Shopify Admin still opens a `trycloudflare.com` URL after deployment, click `Clean dev preview` in the Shopify Admin dev console and reload the app.
