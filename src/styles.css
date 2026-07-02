@@ -39,7 +39,7 @@ button {
 .app-nav {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 20;
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -47,7 +47,7 @@ button {
   border: 1px solid #dcdfe4;
   border-radius: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   box-shadow: 0 1px 0 rgba(31, 33, 36, 0.04);
 }
 
@@ -341,9 +341,9 @@ button:disabled,
 
 .workflow-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.85fr) auto;
+  grid-template-columns: minmax(360px, 1.1fr) minmax(320px, 0.9fr);
   gap: 18px;
-  align-items: center;
+  align-items: start;
   margin-bottom: 14px;
   padding: 18px;
 }
@@ -367,6 +367,7 @@ button:disabled,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 14px;
+  min-width: 0;
 }
 
 .workflow-status div {
@@ -390,16 +391,19 @@ button:disabled,
 }
 
 .workflow-actions {
+  grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+  border-top: 1px solid #e1e3e5;
+  padding-top: 14px;
 }
 
 .batch-state {
-  flex-basis: 100%;
-  text-align: right;
+  flex: 1 1 220px;
+  text-align: left;
 }
 
 .workflow-setup {
