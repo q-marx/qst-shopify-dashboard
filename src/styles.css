@@ -315,11 +315,18 @@ button:disabled,
   display: grid;
   gap: 3px;
   width: fit-content;
-  min-width: 160px;
+  min-width: min(100%, 260px);
   border: 1px solid #dcdfe4;
   border-radius: 6px;
   padding: 10px 12px;
   background: #f6f6f7;
+}
+
+.pairing-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .pairing-box strong {
@@ -563,6 +570,11 @@ button:focus-visible {
 .text-button {
   color: #006e52;
   background: transparent;
+}
+
+.compact-button {
+  min-height: 32px;
+  padding: 0 10px;
 }
 
 .workspace-grid {

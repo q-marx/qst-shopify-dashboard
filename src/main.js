@@ -932,15 +932,39 @@ function renderAccountPanel() {
 
   panel.querySelector("#refresh-account")?.addEventListener("click", refreshAccount);
   panel.querySelector("#generate-pairing")?.addEventListener("click", generatePairingCode);
+  panel.querySelector("[data-copy-pairing-code]")?.addEventListener("click", copyPairingCode);
 }
 
 function pairingCodeMarkup(pairing) {
   return `
     <div class="pairing-box">
-      <strong>${escapeHtml(pairing.code)}</strong>
+      <div class="pairing-code-row">
+        <strong>${escapeHtml(pairing.code)}</strong>
+        <button class="secondary-button compact-button" type="button" data-copy-pairing-code="${escapeAttribute(pairing.code)}">Copy code</button>
+      </div>
       <span>Expires ${escapeHtml(formatDateTime(pairing.expiresAt))}</span>
     </div>
   `;
+}
+
+async function copyPairingCode(event) {
+  const button = event.currentTarget;
+  const code = button.dataset.copyPairingCode || state.pairing?.code || "";
+  if (!code) {
+    window.shopify?.toast?.show?.("No pairing code to copy.");
+    return;
+  }
+
+  const copied = await copyTextToClipboard(code);
+  window.shopify?.toast?.show?.(copied ? "Pairing code copied." : "Could not copy pairing code.");
+  if (copied) {
+    button.textContent = "Copied";
+    window.setTimeout(() => {
+      if (button.isConnected) {
+        button.textContent = "Copy code";
+      }
+    }, 1800);
+  }
 }
 
 async function generatePairingCode() {
