@@ -164,6 +164,19 @@ test("desktop pairing codes are scoped to the verified shop and can only be rede
   assert.equal(secondRedeem.status, 409);
 });
 
+test("Shopify install OAuth uses the whitelisted callback route", async () => {
+  const response = await fetch(`${baseUrl}/auth/shopify/install?shop=alpha-shop.myshopify.com`, {
+    redirect: "manual"
+  });
+  assert.equal(response.status, 302);
+
+  const location = response.headers.get("location") || "";
+  const authUrl = new URL(location);
+  assert.equal(authUrl.hostname, "alpha-shop.myshopify.com");
+  assert.equal(authUrl.pathname, "/admin/oauth/authorize");
+  assert.equal(authUrl.searchParams.get("redirect_uri"), `${baseUrl}/auth/callback`);
+});
+
 test("OAuth callbacks reject missing or reused state", async () => {
   const response = await fetch(`${baseUrl}/auth/ebay/callback?code=test&state=missing`);
   assert.equal(response.status, 400);

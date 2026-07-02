@@ -885,7 +885,7 @@ async function handleShopifyInstall(request, response) {
       returnTo: safeString(request.query.return_to) || "/"
     }
   });
-  const redirectUri = `${publicBaseUrl(request)}/auth/shopify/callback`;
+  const redirectUri = `${publicBaseUrl(request)}/auth/callback`;
   const params = new URLSearchParams({
     client_id: apiKey,
     scope: shopifyScopes(),
