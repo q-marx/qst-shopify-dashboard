@@ -860,7 +860,7 @@ function renderAccountPanel() {
       : "Open this app from Shopify Admin to choose a plan.";
   const desktop = account?.desktop ?? {};
   const desktopPairingEnabled = desktop.pairingEnabled === true;
-  const canPairDesktop = desktopPairingEnabled && (account?.mode !== "production" || subscriptionActive);
+  const canPairDesktop = desktopPairingEnabled;
   const planName = subscription?.name || account?.subscription?.planName || "Plan not selected";
   const subscriptionLabel = state.billingLoading
     ? "Checking"
