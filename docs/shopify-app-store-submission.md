@@ -2,19 +2,18 @@
 
 ## App introduction
 
-Prepare eBay listings from the Shopify products you select.
+Prepare marketplace export packs from the Shopify products you select.
 
 ## App card subtitle
 
-Review Shopify products before creating eBay listings.
+Review Shopify products before creating marketplace listings.
 
 ## Proven feature descriptions
 
 - Read Shopify product information with `read_products`.
 - Search, filter, select, and review Shopify products inside Shopify Admin.
-- Review listing information before any eBay action.
-- Connect eBay through OAuth when sandbox or production credentials are configured.
-- Save prepared eBay listing records with validation outcomes.
+- Review listing information before any marketplace import or desktop publishing action.
+- Save prepared marketplace listing records with validation outcomes.
 - Prepare products in batches.
 - Create reusable export packs and copy-ready listing content.
 - Offer QST Desktop as an optional companion only for workflows supported by the released installer.
@@ -41,5 +40,5 @@ Review Shopify products before creating eBay listings.
 - App URL and redirect URLs point at the production custom domain or approved staging URL.
 - `/readyz` reports durable Postgres.
 - Shopify App Pricing is configured in Partner Dashboard.
-- eBay sandbox/review credentials are available for reviewers if eBay OAuth is included in the test flow.
+- Do not include eBay sandbox credentials in the Shopify review flow unless you deliberately enable web eBay OAuth.
 - Support, privacy, terms, and getting-started URLs are live.

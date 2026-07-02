@@ -4,7 +4,7 @@ import {
   buildCsv,
   buildEbayPrepCsv,
   buildEbayPrepSummary,
-  buildEbayPublishPlan,
+  buildEbayReviewPlan,
   buildTextPack,
   buildWorkspacePack,
   createDraft,
@@ -140,7 +140,7 @@ async function refreshEbaySettings() {
   try {
     state.ebaySettings = await backendRequest(`/api/marketplace-settings/ebay${accountContextQuery()}`);
   } catch (error) {
-    state.ebaySettingsError = error.message || "Could not load eBay setup status.";
+    state.ebaySettingsError = error.message || "Could not load export setup status.";
   } finally {
     state.ebaySettingsLoading = false;
     renderEbayWorkflow();
@@ -200,7 +200,7 @@ function renderShell() {
         <a href="#overview">Overview</a>
         <a href="#products">Products</a>
         <a href="#listing-review">Listing review</a>
-        <a href="#ebay-connection">eBay connection</a>
+        <a href="#marketplace-export">Export packs</a>
         <a href="#exports">Exports</a>
         <a href="#desktop-companion">Desktop companion</a>
         <a href="#settings">Settings</a>
@@ -210,9 +210,9 @@ function renderShell() {
       <section class="hero-band" id="overview">
         <div>
           <p class="eyebrow">Read-only Shopify product workspace</p>
-          <h1>Prepare eBay listings from Shopify products inside Shopify Admin.</h1>
+          <h1>Prepare marketplace export packs from Shopify products inside Shopify Admin.</h1>
           <p class="hero-copy">
-            Search products, review readiness, connect eBay, save prepared listing drafts, and export marketplace-ready packs without changing your Shopify catalogue.
+            Search products, review readiness, save prepared listing drafts, and download marketplace-ready packs without changing your Shopify catalogue.
           </p>
         </div>
         <div class="source-card" id="source-card"></div>
@@ -472,22 +472,15 @@ function renderActivityPanel() {
 
   const latestListing = state.recentListings[0];
   const latestExport = state.recentExports[0];
-  const connection = state.ebayConnection;
-  const ebayStatus = state.ebayConnectionLoading
-    ? "Checking"
-    : connection?.connected
-      ? "Connected"
-      : connection?.configured === false
-        ? "Not configured"
-        : "Not connected";
-  const ebayClass = connection?.connected ? "ok" : connection?.configured === false ? "warning" : "demo";
+  const exportStatus = state.products.length ? "Ready" : state.loading ? "Loading" : "Available";
+  const exportStatusClass = state.products.length ? "ok" : state.loading ? "demo" : "neutral";
 
   panel.innerHTML = `
     <article>
-      <span class="status-pill ${ebayClass}">${escapeHtml(ebayStatus)}</span>
+      <span class="status-pill ${exportStatusClass}">${escapeHtml(exportStatus)}</span>
       <div>
-        <h2>eBay connection</h2>
-        <p>${escapeHtml(connection?.environment ? `Environment: ${connection.environment}` : "Connect eBay before saving eBay-backed prepared listings.")}</p>
+        <h2>Marketplace export packs</h2>
+        <p>Prepare CSV, workspace, and review packs from read-only Shopify data.</p>
       </div>
     </article>
     <article>
@@ -528,32 +521,38 @@ function renderEbayWorkflow() {
   const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
   const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
+  const webEbayOAuth = webEbayOAuthEnabled();
   const ebayConnected = Boolean(state.ebayConnection?.connected);
   const ebayEnvironment = state.ebayConnection?.environment || "sandbox";
   const ebayConfigured = state.ebayConnection?.configured !== false;
-  const mergedEbaySetup = {
-    ...ebaySetup,
-    sellerAccountConnected: ebayConnected
-  };
-  const ebaySetupSummary = setupSummaryFromSettings(mergedEbaySetup);
-  const setupStatusClass = ebaySetupSummary.ready ? "ok" : ebaySetupSummary.completed ? "demo" : "warning";
+  const exportSetupSummary = setupSummaryFromSettings(ebaySetup);
+  const setupStatusClass = exportSetupSummary.ready ? "ok" : exportSetupSummary.completed ? "demo" : "warning";
   const setupStatusLabel = state.ebaySettingsLoading
     ? "Loading"
-    : ebaySetupSummary.ready
+    : exportSetupSummary.ready
       ? "Ready"
-      : `${ebaySetupSummary.completed}/${ebaySetupSummary.total} complete`;
+      : `${exportSetupSummary.completed}/${exportSetupSummary.total} complete`;
+  const webOAuthControls = webEbayOAuth
+    ? `
+      <button class="secondary-button" id="connect-ebay" ${state.ebayConnectionLoading || !ebayConfigured || ebayConnected ? "disabled" : ""}>${state.ebayConnectionLoading ? "Checking..." : ebayConnected ? "eBay connected" : "Connect eBay"}</button>
+      <button class="secondary-button" id="disconnect-ebay" ${state.ebayConnectionLoading || !ebayConnected ? "disabled" : ""}>Disconnect</button>
+    `
+    : "";
+  const webOAuthCheck = webEbayOAuth
+    ? ebaySetupCheck("sellerAccountConnected", `OAuth connected (${ebayEnvironment})`, ebayConnected, { disabled: true })
+    : "";
 
   panel.innerHTML = `
     <div class="workflow-copy">
-      <p class="eyebrow" id="ebay-connection">eBay connection and preparation</p>
-      <h2>Prepare an eBay listing workflow from Shopify products</h2>
+      <p class="eyebrow" id="marketplace-export">Marketplace export preparation</p>
+      <h2>Prepare export-ready listing packs from Shopify products</h2>
       <p>
         QST turns selected Shopify products into persisted prepared listing records and export packs with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
-        Environment: ${escapeHtml(ebayEnvironment)}. QST does not claim a live eBay publish unless eBay confirms one.
+        The Shopify app creates review packs and eBay-compatible CSV exports. Direct eBay publishing remains available in QST Desktop after the merchant connects eBay there.
       </p>
-      ${state.ebayConnectionError ? `<p class="inline-error">${escapeHtml(state.ebayConnectionError)}</p>` : ""}
+      ${webEbayOAuth && state.ebayConnectionError ? `<p class="inline-error">${escapeHtml(state.ebayConnectionError)}</p>` : ""}
     </div>
     <div class="workflow-status">
       <div>
@@ -574,36 +573,35 @@ function renderEbayWorkflow() {
       </div>
     </div>
     <div class="workflow-actions">
-      <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} eBay-ready` : ""}</span>
-      <button class="secondary-button" id="connect-ebay" ${state.ebayConnectionLoading || !ebayConfigured || ebayConnected ? "disabled" : ""}>${state.ebayConnectionLoading ? "Checking..." : ebayConnected ? "eBay connected" : "Connect eBay"}</button>
-      <button class="secondary-button" id="disconnect-ebay" ${state.ebayConnectionLoading || !ebayConnected ? "disabled" : ""}>Disconnect</button>
-      <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select eBay-ready</button>
-      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prepared listings</button>
-      <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download publish plan</button>
-      <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay batch</button>
+      <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} export-ready` : ""}</span>
+      ${webOAuthControls}
+      <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select export-ready</button>
+      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prepared records</button>
+      <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review plan</button>
+      <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay CSV pack</button>
     </div>
     <div class="workflow-setup">
       <div class="setup-heading">
         <div>
-          <h3>eBay setup and validation</h3>
-          <p>OAuth connection state is stored per Shopify shop. Business policies, dispatch location, and category notes are seller-controlled setup checks for the next eBay action.</p>
+          <h3>Export setup notes</h3>
+          <p>Policy, dispatch, and category notes help merchants review exports before importing them elsewhere or continuing in QST Desktop.</p>
         </div>
         <span class="status-pill ${setupStatusClass}">${escapeHtml(setupStatusLabel)}</span>
       </div>
       <div class="setup-checks">
-        ${ebaySetupCheck("sellerAccountConnected", `OAuth connected (${ebayEnvironment})`, ebayConnected, { disabled: true })}
-        ${ebaySetupCheck("businessPoliciesReady", "Payment, return, and fulfilment policies ready", ebaySetup.businessPoliciesReady)}
+        ${webOAuthCheck}
+        ${ebaySetupCheck("businessPoliciesReady", "Seller policy notes ready", ebaySetup.businessPoliciesReady)}
         ${ebaySetupCheck("dispatchLocationReady", "Dispatch country/postcode confirmed", ebaySetup.dispatchLocationReady)}
-        ${ebaySetupCheck("defaultCategoryReady", "Fallback category chosen", ebaySetup.defaultCategoryReady)}
+        ${ebaySetupCheck("defaultCategoryReady", "Fallback category note chosen", ebaySetup.defaultCategoryReady)}
       </div>
       <div class="setup-fields">
         <label>
           <span>Fallback category note</span>
-          <input id="ebay-category-label" type="text" value="${escapeAttribute(ebaySetup.defaultCategoryLabel)}" placeholder="Example: Home decor, 10033, seller review needed" />
+          <input id="ebay-category-label" type="text" value="${escapeAttribute(ebaySetup.defaultCategoryLabel)}" placeholder="Example: Home decor, seller review needed" />
         </label>
         <label>
           <span>Setup notes</span>
-          <input id="ebay-setup-notes" type="text" value="${escapeAttribute(ebaySetup.notes)}" placeholder="Policy/account notes for the next eBay action" />
+          <input id="ebay-setup-notes" type="text" value="${escapeAttribute(ebaySetup.notes)}" placeholder="Policy, dispatch, or category notes for exports" />
         </label>
         <button class="secondary-button" id="save-ebay-setup" ${state.ebaySettingsSaving || state.ebaySettingsLoading ? "disabled" : ""}>
           ${state.ebaySettingsSaving ? "Saving..." : "Save setup"}
@@ -617,7 +615,7 @@ function renderEbayWorkflow() {
   panel.querySelector("#disconnect-ebay")?.addEventListener("click", disconnectEbay);
   panel.querySelector("#select-ebay-ready")?.addEventListener("click", selectEbayReadyProducts);
   panel.querySelector("#prepare-ebay-listings")?.addEventListener("click", prepareSelectedListings);
-  panel.querySelector("#download-ebay-plan")?.addEventListener("click", downloadEbayPublishPlan);
+  panel.querySelector("#download-ebay-plan")?.addEventListener("click", downloadEbayReviewPlan);
   panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
   panel.querySelector("#save-ebay-setup")?.addEventListener("click", saveEbaySetupFromPanel);
 }
@@ -768,7 +766,7 @@ async function saveEbaySetupFromPanel() {
   }
 
   const settings = {
-    sellerAccountConnected: Boolean(state.ebayConnection?.connected),
+    sellerAccountConnected: webEbayOAuthEnabled() && Boolean(state.ebayConnection?.connected),
     businessPoliciesReady: panel.querySelector('[data-ebay-setup="businessPoliciesReady"]')?.checked || false,
     dispatchLocationReady: panel.querySelector('[data-ebay-setup="dispatchLocationReady"]')?.checked || false,
     defaultCategoryReady: panel.querySelector('[data-ebay-setup="defaultCategoryReady"]')?.checked || false,
@@ -794,10 +792,10 @@ async function saveEbaySetupFromPanel() {
         settings
       })
     });
-    window.shopify?.toast?.show?.("eBay setup saved.");
+    window.shopify?.toast?.show?.("Export setup saved.");
   } catch (error) {
     state.ebaySettings = previousSettings;
-    state.ebaySettingsError = error.message || "Could not save eBay setup status.";
+    state.ebaySettingsError = error.message || "Could not save export setup status.";
   } finally {
     state.ebaySettingsSaving = false;
     renderEbayWorkflow();
@@ -825,7 +823,6 @@ function defaultEbaySettingsPayload() {
 
 function setupSummaryFromSettings(settings) {
   const checks = [
-    settings.sellerAccountConnected,
     settings.businessPoliciesReady,
     settings.dispatchLocationReady,
     settings.defaultCategoryReady
@@ -837,6 +834,10 @@ function setupSummaryFromSettings(settings) {
     ready: completed === checks.length,
     status: completed === checks.length ? "ready" : completed ? "in_progress" : "not_started"
   };
+}
+
+function webEbayOAuthEnabled() {
+  return state.account?.marketplaces?.ebay?.webOauthEnabled === true;
 }
 
 function renderAccountPanel() {
@@ -1481,12 +1482,12 @@ function ebayDraftStatus(product) {
   const prep = assessEbayPrep(product);
   const blockerText = prep.blockers.length
     ? prep.blockers.map((check) => check.label).join(", ")
-    : "Ready for eBay batch review";
+    : "Ready for export review";
 
   return `
     <div class="ebay-detail">
       <div class="ebay-detail-heading">
-        <h3>eBay batch readiness</h3>
+        <h3>Export pack readiness</h3>
         <span class="readiness-pill ${prep.state}">${prep.score}%</span>
       </div>
       <div class="ebay-facts">
@@ -2060,7 +2061,7 @@ function selectEbayReadyProducts() {
       .map((product) => product.id)
   );
   render();
-  window.shopify?.toast?.show?.("eBay-ready products selected.");
+  window.shopify?.toast?.show?.("Export-ready products selected.");
 }
 
 async function prepareSelectedListings() {
@@ -2109,7 +2110,7 @@ function downloadEbayBatch() {
   }
 
   if (!products.length) {
-    window.shopify?.toast?.show?.("No eBay-ready products found in the current view.");
+    window.shopify?.toast?.show?.("No export-ready products found in the current view.");
     return;
   }
 
@@ -2119,10 +2120,10 @@ function downloadEbayBatch() {
   download(filename, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
   void recordExport("ebay_batch_csv", products, filename);
   markProductsWorkspaceStatus(products, "exported");
-  window.shopify?.toast?.show?.("eBay batch generated.");
+  window.shopify?.toast?.show?.("eBay CSV pack generated.");
 }
 
-function downloadEbayPublishPlan() {
+function downloadEbayReviewPlan() {
   let products = getSelectedProductsForExport();
   if (!products.length) {
     products = state.filteredProducts
@@ -2131,22 +2132,22 @@ function downloadEbayPublishPlan() {
   }
 
   if (!products.length) {
-    window.shopify?.toast?.show?.("No eBay-ready products found in the current view.");
+    window.shopify?.toast?.show?.("No export-ready products found in the current view.");
     return;
   }
 
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
-  const filename = `qst-ebay-publish-plan-${date}.json`;
+  const filename = `qst-ebay-review-plan-${date}.json`;
   download(
     filename,
-    buildEbayPublishPlan(products, ebaySetup, draftOverrides),
+    buildEbayReviewPlan(products, ebaySetup, draftOverrides),
     "application/json;charset=utf-8"
   );
-  void recordExport("ebay_publish_plan", products, filename);
+  void recordExport("ebay_review_plan", products, filename);
   markProductsWorkspaceStatus(products, "ready");
-  window.shopify?.toast?.show?.("eBay review plan generated.");
+  window.shopify?.toast?.show?.("Review plan generated.");
 }
 
 function exportSelected(type) {

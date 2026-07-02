@@ -5,11 +5,10 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - loads Shopify products through Shopify App Bridge direct Admin GraphQL access
 - uses read-only `read_products` scope
 - lets merchants search, filter, select, review, and edit listing drafts in memory
-- connects eBay through OAuth when eBay app credentials are configured
 - saves prepared listing records per Shopify shop with validation results
-- prepares eBay-ready batch files with draft copy, prices, SKUs, image URLs, variants, readiness notes, and category search hints
-- includes eBay setup validation for seller policies, dispatch location, and fallback category readiness
-- exports an eBay publish-plan JSON file that previews the inventory item, offer, and publish sequence without calling eBay
+- prepares marketplace export packs with draft copy, prices, SKUs, image URLs, variants, readiness notes, and category search hints
+- includes export setup notes for seller policies, dispatch location, and fallback category readiness
+- exports an eBay-compatible review-plan JSON file without connecting to or publishing on eBay
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest
 - lets merchants choose export-only primary/included images for listing packs without editing Shopify media
 - saves local draft and export-image choices in the merchant's browser so work survives refreshes without writing back to Shopify
@@ -21,7 +20,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - shows Shopify subscription status, desktop entitlement, and pairing availability
 - positions the Windows QST app as an optional companion for advanced desktop-first workflows, not a requirement
 
-The app also includes a Node/Express backend for Shopify compliance webhooks, Shopify/eBay OAuth callbacks, account status, listing/export records, installer entitlement, and desktop pairing.
+The app also includes a Node/Express backend for Shopify compliance webhooks, Shopify OAuth callbacks, optional desktop eBay OAuth callbacks, account status, listing/export records, installer entitlement, and desktop pairing.
 
 For the full launch checklist and remaining setup steps, use [QST_SHOPIFY_LAUNCH_RUNBOOK.md](./QST_SHOPIFY_LAUNCH_RUNBOOK.md).
 
@@ -41,7 +40,7 @@ Open `http://127.0.0.1:5173`. Outside Shopify Admin the app uses demo products w
 2. Set `VITE_SHOPIFY_API_KEY` to the app client ID from the Shopify Partner Dashboard.
 3. Set `SHOPIFY_API_SECRET` to the app client secret before production deployment.
 4. Set `QST_TOKEN_ENCRYPTION_KEY` before storing OAuth tokens outside local development.
-5. Configure `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_REDIRECT_URI`, and `EBAY_ENVIRONMENT=sandbox` to enable the real eBay OAuth connection flow.
+5. Configure `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_REDIRECT_URI`, and `EBAY_ENVIRONMENT=sandbox` only when testing the optional QST Desktop eBay OAuth flow.
 6. Update `shopify.app.toml` or `shopify.app.qst-listing-workspace.toml` with the same `client_id` and your hosted HTTPS `application_url`.
 7. Keep the app embedded and keep direct Admin API access enabled:
 

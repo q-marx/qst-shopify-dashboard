@@ -352,6 +352,30 @@ export function buildEbayPublishPlan(products, ebaySettings = {}, draftOverrides
   );
 }
 
+export function buildEbayReviewPlan(products, ebaySettings = {}, draftOverrides = {}) {
+  const setup = normalizeEbaySetup(ebaySettings);
+  const setupMissing = ebayExportSetupMissing(setup);
+
+  return JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      mode: "ebay_export_review_plan",
+      callsEbayApi: false,
+      purpose:
+        "Review Shopify product data, eBay-compatible draft fields, and seller notes before importing a CSV or continuing in QST Desktop. This file does not connect to or publish on eBay.",
+      setup: {
+        ready: setupMissing.length === 0,
+        missing: setupMissing,
+        defaultCategoryLabel: setup.defaultCategoryLabel || "",
+        notes: setup.notes || ""
+      },
+      products: products.map((product) => ebayReviewPlanProduct(product, setup, draftOverrides[product.id]))
+    },
+    null,
+    2
+  );
+}
+
 export function buildTextPack(products, marketplace = "ebay", draftOverrides = {}) {
   return products
     .map((product, index) => {
@@ -669,6 +693,54 @@ function ebayPublishPlanProduct(product, setup, draftOverride) {
   };
 }
 
+function ebayReviewPlanProduct(product, setup, draftOverride) {
+  const draft = draftOverride || createDraft(product, "ebay");
+  const prep = assessEbayPrep(product);
+  const imageUrls = productImageUrls(product);
+  const variants = product.variants?.length ? product.variants : [{}];
+  const categoryLabel = setup.defaultCategoryReady && setup.defaultCategoryLabel
+    ? setup.defaultCategoryLabel
+    : prep.categoryHint.label;
+
+  return {
+    shopifyProductId: product.id,
+    handle: product.handle || "",
+    sourceTitle: product.title,
+    draft: {
+      title: draft.title,
+      description: draft.description,
+      price: draft.price || "",
+      sku: draft.sku || "",
+      tags: Array.isArray(draft.tags) ? draft.tags : collectTags(product),
+      primaryImageUrl: draft.imageUrl || product.imageUrl || imageUrls[0] || ""
+    },
+    readiness: {
+      state: prep.state,
+      score: prep.score,
+      reviewItems: prep.blockers.map((check) => check.label)
+    },
+    category: {
+      searchHint: categoryLabel,
+      hintSource: prep.categoryHint.source,
+      sellerFallbackConfirmed: Boolean(setup.defaultCategoryReady)
+    },
+    images: imageUrls,
+    exportRows: variants.map((variant, index) => ({
+      sku: variant.sku || generatedSku(product, variant, index),
+      shopifyVariantId: variant.id || "",
+      title: draft.title,
+      price: variant.price || draft.price || "",
+      quantity: normalizedQuantity(variant.inventoryQuantity),
+      variantOptions: variantOptionsText(variant),
+      sellerReview: {
+        category: setup.defaultCategoryReady ? "confirmed_or_taxonomy_result" : "review_before_import",
+        dispatchLocation: setup.dispatchLocationReady ? "confirmed" : "review_before_import",
+        policies: setup.businessPoliciesReady ? "confirmed" : "review_before_import"
+      }
+    }))
+  };
+}
+
 function normalizeEbaySetup(input) {
   return {
     sellerAccountConnected: Boolean(input.sellerAccountConnected),
@@ -684,6 +756,14 @@ function ebaySetupMissing(setup) {
   return [
     setup.sellerAccountConnected ? "" : "eBay seller account connection",
     setup.businessPoliciesReady ? "" : "payment, return, and fulfilment policies",
+    setup.dispatchLocationReady ? "" : "dispatch country/postcode",
+    setup.defaultCategoryReady ? "" : "fallback category"
+  ].filter(Boolean);
+}
+
+function ebayExportSetupMissing(setup) {
+  return [
+    setup.businessPoliciesReady ? "" : "payment, return, and fulfilment policy notes",
     setup.dispatchLocationReady ? "" : "dispatch country/postcode",
     setup.defaultCategoryReady ? "" : "fallback category"
   ].filter(Boolean);

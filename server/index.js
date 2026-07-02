@@ -489,8 +489,7 @@ app.post("/api/listings/prepare", async (request, response) => {
     return;
   }
 
-  const connection = marketplace === "ebay" ? await getEbayConnection(context.shop) : null;
-  const records = products.slice(0, 100).map((entry) => buildListingRecord(context.shop, marketplace, entry, connection));
+  const records = products.slice(0, 100).map((entry) => buildListingRecord(context.shop, marketplace, entry));
   await saveListingRecords(records);
   await recordEvent("listing_prepare_requested", {
     shop: context.shop,
@@ -1116,7 +1115,8 @@ async function buildAccountPayload(auth, request) {
     },
     marketplaces: {
       ebay: {
-        dashboardMode: "batch_preparation",
+        dashboardMode: "export_preparation",
+        webOauthEnabled: envFlag("QST_WEB_EBAY_OAUTH_ENABLED", false),
         hostedPublishingConfigured: Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET),
         desktopPublishingOptional: true
       }
@@ -1828,16 +1828,16 @@ function buildEbayConnectionPayload(shop, connection, request) {
     message: config.ready
       ? connected
         ? "eBay OAuth connection is stored for this Shopify shop."
-        : "Connect eBay with OAuth before creating eBay-backed listing preparations."
+        : "eBay OAuth is optional in Shopify Admin. Direct eBay publishing is handled by QST Desktop."
       : config.error
   };
 }
 
-function buildListingRecord(shop, marketplace, entry, connection) {
+function buildListingRecord(shop, marketplace, entry) {
   const product = entry.product || entry;
   const draft = entry.draft || {};
   const checks = Array.isArray(entry.checks) ? entry.checks : [];
-  const validationErrors = validateListingEntry(marketplace, product, draft, checks, connection);
+  const validationErrors = validateListingEntry(product, draft, checks);
   const now = new Date().toISOString();
 
   return {
@@ -1850,14 +1850,14 @@ function buildListingRecord(shop, marketplace, entry, connection) {
     validationErrors,
     draft,
     productSnapshot: sanitizeProductSnapshot(product),
-    externalStatus: "not_sent_to_ebay",
+    externalStatus: "not_sent_to_marketplace",
     externalReference: null,
     createdAt: now,
     updatedAt: now
   };
 }
 
-function validateListingEntry(marketplace, product, draft, checks, connection) {
+function validateListingEntry(product, draft, checks) {
   const errors = [];
   if (!safeString(draft.title || product.title)) {
     errors.push("Missing listing title.");
@@ -1867,9 +1867,6 @@ function validateListingEntry(marketplace, product, draft, checks, connection) {
   }
   if (!safeString(draft.imageUrl || product.imageUrl) && !(product.images || []).some((image) => safeString(image.url))) {
     errors.push("No usable image URL.");
-  }
-  if (marketplace === "ebay" && !connection?.accessToken) {
-    errors.push("Missing eBay OAuth connection for this Shopify shop.");
   }
   for (const check of checks) {
     if (check && check.ok === false && check.label) {
@@ -2827,7 +2824,6 @@ function normalizeEbaySettings(input) {
 
 function ebaySettingsSummary(settings) {
   const checks = [
-    settings.sellerAccountConnected,
     settings.businessPoliciesReady,
     settings.dispatchLocationReady,
     settings.defaultCategoryReady

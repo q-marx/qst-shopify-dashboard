@@ -6,8 +6,7 @@
 - [ ] Browse products.
 - [ ] Filter and select products.
 - [ ] Open and review product data.
-- [ ] Connect eBay sandbox/review account.
-- [ ] Prepare/create test listing or verified draft.
+- [ ] Prepare/create a verified marketplace draft.
 - [ ] Generate export pack.
 - [ ] Confirm Shopify catalogue was not changed.
 - [ ] Confirm desktop companion is optional.
@@ -21,5 +20,5 @@ Additional web-specific checks:
 - [ ] `/healthz` returns quickly.
 - [ ] `/readyz` reports durable Postgres before submission.
 - [ ] A shop cannot see another shop's listing/export records.
-- [ ] eBay connection state shows `Sandbox` or `Production`.
-- [ ] A missing eBay connection produces an actionable validation result.
+- [ ] The embedded app does not require eBay OAuth to prepare records or exports.
+- [ ] Missing product data produces an actionable validation result.

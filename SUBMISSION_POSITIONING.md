@@ -8,11 +8,10 @@ QST Listing Workspace is the Shopify Admin app. It must be useful on its own:
 - searches and filters products
 - checks listing readiness
 - lets merchants review and adjust marketplace listing drafts
-- connects eBay through OAuth when sandbox or production credentials are configured
-- saves prepared eBay listing records with validation outcomes
-- prepares eBay-ready batch files with prices, SKUs, image URLs, variant rows, readiness notes, and category search hints
-- tracks eBay setup readiness for seller account connection, policies, dispatch location, and fallback category
-- exports an eBay publish-plan JSON file for reviewing the inventory item, offer, and publish sequence before any live publishing workflow
+- saves prepared marketplace listing records with validation outcomes
+- prepares eBay-compatible CSV export packs with prices, SKUs, image URLs, variant rows, readiness notes, and category search hints
+- tracks export setup readiness for policy notes, dispatch location, and fallback category
+- exports an eBay-compatible review-plan JSON file without connecting to or publishing on eBay
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest
 - supports export-only primary/included image selection without editing Shopify media
 - saves local draft and export-image choices in the merchant's browser without writing back to Shopify
@@ -74,11 +73,11 @@ The desktop companion should be presented as additive:
 - helps with bulk preparation, local workflows, and advanced marketplace automation where supported by the released desktop build
 - can publish eligible products to eBay after the merchant connects eBay and completes eBay setup in the desktop companion
 - can continue from dashboard-prepared eBay drafts after setup
-- can use listing drafts, image choices, SKU readiness, and eBay setup notes prepared in the Shopify dashboard
+- can use listing drafts, image choices, SKU readiness, and export setup notes prepared in the Shopify dashboard
 - can use the same product-level marketplace status context when merchants continue work outside Shopify Admin
 - can use a short pairing code to associate with the Shopify workspace once the released desktop build supports code redemption
 - should not be needed to search, review, edit, or export listing drafts in Shopify Admin
-- should not be described as required for the Shopify app's eBay-ready batch preparation
+- should not be described as required for the Shopify app's marketplace export preparation
 
 ## App Store Listing Angle
 
@@ -91,16 +90,16 @@ Prepare marketplace-ready listing drafts from your Shopify products without edit
 Short description:
 
 ```text
-Search products, review listing readiness, prepare eBay-ready batches, and export marketplace packs from inside Shopify Admin.
+Search products, review listing readiness, prepare eBay-compatible CSVs, and export marketplace packs from inside Shopify Admin.
 ```
 
 Feature bullets:
 
 - Read-only product workspace for marketplace listing preparation
 - Product readiness checks for title, description, image, price, SKU, and status
-- eBay-ready batch preparation with draft copy, variant rows, image URLs, and category search hints
-- eBay OAuth connection and setup validation for account, policy, dispatch location, and fallback category readiness
-- eBay publish-plan export for reviewing the inventory item, offer, and publish sequence
+- eBay-compatible CSV preparation with draft copy, variant rows, image URLs, and category search hints
+- Export setup notes for policy, dispatch location, and fallback category readiness
+- Review-plan export for checking product data before import or desktop continuation
 - QST workspace pack export with listing data, promo-page HTML, variants, and image URL manifest
 - Export-only image selection for choosing primary/included listing images without changing Shopify
 - Browser-local draft and image persistence for continuing marketplace preparation after refresh
@@ -115,5 +114,5 @@ Feature bullets:
 Reviewer note:
 
 ```text
-QST Listing Workspace is fully usable inside Shopify Admin with read-only product access. The Windows desktop companion is optional and is not required to search products, review readiness, prepare eBay-ready batches, edit listing drafts, or export listing packs.
+QST Listing Workspace is fully usable inside Shopify Admin with read-only product access. The Windows desktop companion is optional and is not required to search products, review readiness, prepare eBay-compatible CSVs, edit listing drafts, or export listing packs.
 ```

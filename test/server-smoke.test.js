@@ -85,7 +85,7 @@ test("shop context comes from the verified session token, not spoofable request 
   assert.equal(betaRecent.exports.length, 0);
 });
 
-test("listing preparation persists validation status and reports missing eBay connection", async () => {
+test("listing preparation persists export-ready records without requiring eBay OAuth", async () => {
   const response = await postJson(
     "/api/listings/prepare",
     {
@@ -110,9 +110,9 @@ test("listing preparation persists validation status and reports missing eBay co
     sessionToken("alpha-shop.myshopify.com")
   );
 
-  assert.equal(response.status, 207);
-  assert.equal(response.body.records[0].status, "validation_failed");
-  assert.match(response.body.records[0].validationErrors.join(" "), /Missing eBay OAuth connection/);
+  assert.equal(response.status, 201);
+  assert.equal(response.body.records[0].status, "prepared");
+  assert.deepEqual(response.body.records[0].validationErrors, []);
 });
 
 test("desktop pairing codes are scoped to the verified shop and can only be redeemed once", async () => {

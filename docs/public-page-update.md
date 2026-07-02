@@ -8,18 +8,18 @@ QST for Shopify
 
 ## Headline
 
-Review Shopify products and prepare eBay listings from one workspace.
+Review Shopify products and prepare marketplace export packs from one workspace.
 
 ## Subheading
 
-QST Web gives merchants an embedded Shopify Admin workflow for reviewing product data, connecting eBay, preparing listing records, and exporting reusable listing packs. QST Desktop is an optional companion for advanced desktop-first workflows.
+QST Web gives merchants an embedded Shopify Admin workflow for reviewing product data, preparing listing records, and exporting reusable marketplace packs. QST Desktop is an optional companion for advanced desktop-first workflows.
 
 ## Feature sections
 
 - Read Shopify products in Shopify Admin.
 - Search, filter, select, and review products before listing.
-- Connect eBay through OAuth in sandbox or production as configured.
-- Save prepared eBay listing records with validation results.
+- Save prepared marketplace listing records with validation results.
+- Download eBay-compatible CSV and review packs without connecting a marketplace account.
 - Generate export packs for manual marketplace workflows.
 - Offer QST Desktop as an optional companion when the released installer supports the workflow being described.
 
@@ -41,7 +41,7 @@ No. QST reads product information to prepare listings and exports. It does not w
 No. QST Desktop is optional and intended for advanced desktop-first workflows.
 
 **Does QST publish live eBay listings automatically?**  
-The web app connects eBay and prepares listing records/export packs. Only claim live publishing where eBay has confirmed a listing creation/publish result in the configured environment.
+No. The web app prepares listing records and export packs. Direct eBay publishing belongs in QST Desktop where the merchant connects eBay.
 
 ## Manual checklist
 
