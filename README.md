@@ -85,15 +85,15 @@ https://admin.shopify.com/store/:store_handle/charges/:app_handle/pricing_plans
 Set `QST_SHOPIFY_APP_HANDLE` and `VITE_QST_SHOPIFY_APP_HANDLE` to the embedded app handle used in Shopify Admin, for example `qst-listing-workspace` from `/apps/qst-listing-workspace`.
 For local development only, `QST_DEV_STORE_HANDLE` can point the pricing button at your dev store when Shopify's embedded URL does not expose a shop handle. The production app resolves the merchant's actual shop from Shopify context instead.
 
-After the merchant has an active plan, the dashboard can show the Windows installer. Desktop pairing remains behind an explicit release flag until the Windows build includes the matching pairing screen. The Shopify dashboard remains usable without the desktop app; the Windows companion is additive for advanced desktop-first workflows using the same Shopify product workspace. Configure the installer link with:
+After the merchant has an active plan, the dashboard can show the Windows installer and generate a pairing code for QST Desktop. The Shopify dashboard remains usable without the desktop app; the Windows companion is additive for advanced desktop-first workflows using the same Shopify product workspace. Configure the installer link with:
 
 ```env
-QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-installer-url
+QST_DESKTOP_DOWNLOAD_URL=https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
 QST_DESKTOP_VERSION=1.0.0
-QST_DESKTOP_PAIRING_ENABLED=false
+QST_DESKTOP_PAIRING_ENABLED=true
 ```
 
-Keep `QST_DESKTOP_PAIRING_ENABLED=false` until the released Windows build includes the Shopify workspace pairing screen that redeems `/api/desktop/pairing/:code`.
+The v1.0 Windows installer includes the Shopify workspace pairing screen that redeems `/api/desktop/pairing/:code`.
 
 Production must use Postgres through `DATABASE_URL`. OAuth states, encrypted Shopify/eBay tokens, pairing codes, listing preparation records, export records, and marketplace setup state are stored per Shopify shop. `/readyz` fails in production unless durable storage is available.
 
@@ -131,8 +131,8 @@ EBAY_CLIENT_ID=your_ebay_client_id
 EBAY_CLIENT_SECRET=your_ebay_client_secret
 EBAY_REDIRECT_URI=your_ebay_redirect_uri_or_runame
 QST_DESKTOP_VERSION=1.0.0
-QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-qst-installer-url
-QST_DESKTOP_PAIRING_ENABLED=false
+QST_DESKTOP_DOWNLOAD_URL=https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
+QST_DESKTOP_PAIRING_ENABLED=true
 ```
 
 After Render deploys, copy the Render service URL and update the Shopify app config:

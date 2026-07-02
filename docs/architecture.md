@@ -14,7 +14,7 @@
 - Token/storage layer now: Postgres-backed OAuth states, encrypted Shopify sessions, encrypted eBay connections, listing records, export records, pairing codes, event logs, and marketplace settings. Production readiness fails unless Postgres is available.
 - Render services: current dashboard is one Render web service, `qst-shopify-dashboard`, plus Postgres `qst-shopify-dashboard-db-frankfurt`.
 - Custom domain: no Q-MER.CH subdomain config is present in this repository. Current app config still uses `https://qst-shopify-dashboard.onrender.com`.
-- Desktop source: present in `../QST_RELEASE_SOURCE_729_fixed`. The source and local PyInstaller bundle now include a pairing-code client and dashboard-backed eBay OAuth, but the public installer still must be compiled, QA-tested, and published before `QST_DESKTOP_PAIRING_ENABLED` is turned on.
+- Desktop source: present in `../QST_RELEASE_SOURCE_729_fixed`. The source, local PyInstaller bundle, and published v1.0 GitHub Release installer include a pairing-code client and dashboard-backed eBay OAuth, so `QST_DESKTOP_PAIRING_ENABLED` can be enabled for the dashboard deployment.
 - Billing/pricing: no custom billing server flow. The app links to Shopify App Pricing managed plan selection through Shopify Admin.
 - Public website source: Q-MER.CH Shopify theme/source is not present. See `docs/public-page-update.md`.
 

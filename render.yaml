@@ -33,11 +33,11 @@ services:
       - key: QST_SUBSCRIPTION_STATUS
         value: not_checked
       - key: QST_DESKTOP_VERSION
-        value: Not configured
+        value: "1.0.0"
       - key: QST_DESKTOP_DOWNLOAD_URL
-        value: ""
+        value: https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
       - key: QST_DESKTOP_PAIRING_ENABLED
-        value: "false"
+        value: "true"
       - key: QST_PAIRING_TTL_MINUTES
         value: "15"
       - key: EBAY_ENVIRONMENT

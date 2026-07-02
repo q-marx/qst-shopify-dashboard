@@ -252,8 +252,9 @@ QST_SHOPIFY_APP_HANDLE=qst-listing-workspace
 VITE_QST_SHOPIFY_APP_HANDLE=qst-listing-workspace
 QST_PLAN_NAME=QST Starter
 QST_SUBSCRIPTION_STATUS=not_checked
-QST_DESKTOP_VERSION=Not configured
-QST_DESKTOP_DOWNLOAD_URL=
+QST_DESKTOP_VERSION=1.0.0
+QST_DESKTOP_DOWNLOAD_URL=https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
+QST_DESKTOP_PAIRING_ENABLED=true
 QST_PAIRING_TTL_MINUTES=15
 DATABASE_URL=postgres_connection_url
 ```
@@ -434,24 +435,15 @@ When the Windows installer is hosted:
 
 ```env
 QST_DESKTOP_VERSION=1.0.0
-QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-qst-installer-url
-QST_DESKTOP_PAIRING_ENABLED=false
+QST_DESKTOP_DOWNLOAD_URL=https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
+QST_DESKTOP_PAIRING_ENABLED=true
 ```
 
 4. Redeploy.
 5. Open the embedded Shopify app.
 6. Confirm the Windows companion card shows a download button.
 
-Do not use Shopify Admin `Content > Files` for the Windows installer if the file is over that store's file-size limit. The current installer is about 112 MB. Upload the URL-friendly copy at `C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\releases\installer\QST-Setup-v1.0.exe` as a GitHub Release asset or host it on a dedicated downloads bucket/domain, then use that public HTTPS URL in `QST_DESKTOP_DOWNLOAD_URL`.
-
-Fast GitHub Release path:
-
-```powershell
-gh auth login
-gh release create v1.0.0 "C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\releases\installer\QST-Setup-v1.0.exe" --repo q-marx/qst-shopify-dashboard --title "QST Desktop v1.0.0" --notes "QST Desktop Windows installer for Shopify review." --draft
-```
-
-After you publish the release, the public installer URL should be:
+Do not use Shopify Admin `Content > Files` for the Windows installer if the file is over that store's file-size limit. The current installer is about 112 MB. The public GitHub Release asset is:
 
 ```text
 https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
@@ -491,12 +483,11 @@ POST /api/desktop/pairing/:code/redeem
 Important:
 
 - This Shopify dashboard repo does not ship QST Desktop; desktop changes live in `C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\QST_RELEASE_SOURCE_729_fixed`.
-- If the public desktop installer does not yet redeem these pairing endpoints, do not claim live two-way sync in the Shopify submission.
-- Say the desktop companion can be paired for advanced local workflows only when the released desktop installer supports the pairing flow.
-- Keep `QST_DESKTOP_PAIRING_ENABLED=false` until the released desktop installer has a screen where the user enters the web-generated code.
-- The desktop source and local PyInstaller bundle now include the pairing-code flow and dashboard-backed eBay OAuth, but the public installer still must be compiled, QA-tested, and published before this can be enabled for merchants.
+- The published v1.0 installer redeems the pairing endpoints, so the dashboard can enable desktop pairing.
+- Say the desktop companion can be paired for advanced local workflows through the published v1.0 Windows installer.
+- The desktop source, local PyInstaller bundle, and GitHub Release installer now include the pairing-code flow and dashboard-backed eBay OAuth.
 - New paired desktop builds no longer require the separate Python `qst_broker` service for Shopify pairing or eBay OAuth; keep the old broker only while supporting older desktop builds.
-- Once that desktop build is released and QA-tested, set `QST_DESKTOP_PAIRING_ENABLED=true` in Render and redeploy.
+- Set `QST_DESKTOP_PAIRING_ENABLED=true` in Render and redeploy.
 
 ## 7. Embedded App Functional QA
 
