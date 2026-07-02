@@ -2,7 +2,7 @@
 
 This is the working checklist for getting QST Listing Workspace functioning properly for Shopify review and early customers.
 
-Use this document as the source of truth for the current Shopify dashboard project. It does not require changes to the QST desktop source code.
+Use this document as the source of truth for the current Shopify dashboard project. The Shopify dashboard can ship without QST Desktop, but the desktop pairing code must stay disabled until a released QST Desktop build can redeem the web-generated pairing code.
 
 ## Current Known State
 
@@ -17,9 +17,60 @@ Use this document as the source of truth for the current Shopify dashboard proje
 - Render Blueprint source of truth: `render.yaml` on GitHub `main`
 - Current intended Render database: `qst-shopify-dashboard-db-frankfurt`
 - Current intended Render database region: Frankfurt
+- Current repository target: one paid always-on Render web service plus non-free Render Postgres
 - Render Postgres status: fixed and verified durable on 2026-06-12
 
 The direct Render URL is not supposed to show live Shopify products. Live products load inside Shopify Admin because the dashboard uses Shopify App Bridge direct Admin GraphQL access. Direct browser visits can only show an empty or preview state because there is no embedded Shopify session.
+
+## Return-To-Work Snapshot - 2026-06-24
+
+Use this as the current handoff point after the June break.
+
+Verified locally on 2026-06-24:
+
+- `git status --short` is clean.
+- Latest local commit is `f382b41 Prevent Shopify dev tunnel replacing production URL`.
+- `npm.cmd run build` passes. PowerShell `npm run build` can be blocked by local execution policy, so use `npm.cmd` if needed.
+- Production-server local smoke passed:
+  - `/healthz` returns OK in production mode.
+  - `/readyz` returns OK only when durable Postgres is configured.
+  - `/api/account` reports `QST Listing Workspace`.
+  - `/api/desktop/download` returns 404 while the installer URL is intentionally unconfigured.
+  - `/listing-grader` returns 404.
+- Live Render health passed at `2026-06-24T10:55:45.598Z`:
+
+```json
+{
+  "storage": "postgres",
+  "storageReady": true,
+  "postgresReady": true,
+  "fallbackActive": false,
+  "storagePersistence": "durable"
+}
+```
+
+Dashboard completion status:
+
+- The dashboard is feature-complete enough for the planned Shopify review flow based on source review, build, live health, and local production endpoint smoke.
+- It is not submission-complete until the manual embedded Shopify Admin QA pass, Shopify pricing test, compliance webhook proof, public listing media, and support/legal URLs are complete.
+- Do not describe the Windows desktop app as required. The dashboard must remain usable on its own inside Shopify Admin.
+
+Render paid-plan gate:
+
+- `render.yaml` now defines the web service as `plan: starter` and Postgres as `basic-256mb`.
+- Before submission, sync the Blueprint and confirm Render has applied the non-free plans.
+- After syncing, rerun `npm.cmd run render:health` and confirm `/readyz` reports durable Postgres with `fallbackActive: false`.
+
+Work from here:
+
+1. Sync/confirm the paid Render Blueprint and rerun the health check.
+2. Deploy or reconfirm Shopify app config from `shopify.app.qst-listing-workspace.toml`.
+3. Confirm Shopify App Pricing, including the public `QST Starter` plan and the hosted plan-selection link.
+4. Run the embedded app QA checklist inside `https://admin.shopify.com/store/sst-test-site/apps/qst-listing-workspace/`.
+5. Capture proof that compliance webhooks are configured in the Shopify Partner Dashboard and that invalid-HMAC probes still return 401.
+6. Decide whether the desktop installer URL will be hosted for review. If not, keep `QST_DESKTOP_DOWNLOAD_URL` blank and leave the dashboard showing `Installer pending`.
+7. Finish App Store submission assets: icon, screenshots, demo screencast, privacy policy URL, support email, support URL, pricing text, and reviewer instructions.
+8. Do the separate desktop release gates from `docs/qa/CURRENT_RELEASE_GAP_AUDIT.md`: installer install/uninstall check, short visible GUI pass, and owner/legal review of release docs.
 
 ## Priority Order
 
@@ -183,7 +234,7 @@ Only use this if the clean Blueprint path is blocked and you need temporary dura
 
 This is not the preferred final setup because it keeps the web service and database in different regions.
 
-Do not submit to Shopify while `/api/health` still reports `memory_fallback`.
+Do not submit to Shopify while `/readyz` fails or reports `memory_fallback`.
 
 ## 2. Confirm Render Environment Variables
 
@@ -212,7 +263,7 @@ Notes:
 - `SHOPIFY_API_SECRET` must be the real client secret from the Shopify app.
 - `QST_DESKTOP_DOWNLOAD_URL` can stay blank until the Windows installer is hosted.
 - If `QST_DESKTOP_DOWNLOAD_URL` is blank, the Shopify app remains usable; the desktop card should show installer pending.
-- Before public review, use a non-sleeping Render web service plan if possible. Render free services can cold-start, which can hurt Shopify automated checks and reviewer experience.
+- Before public review, use the paid non-sleeping Render web service plan from `render.yaml`. Free web services can cold-start, which can hurt Shopify automated checks and reviewer experience.
 
 ## 3. Confirm GitHub And Render Deployment
 
@@ -331,7 +382,7 @@ Recommended first public plan:
 Plan name: QST Starter
 Type: recurring monthly
 Trial: optional
-Description: Prepare marketplace-ready Shopify listings, export eBay-ready batches, and optionally pair QST Desktop for heavier local workflows and one-click eBay publishing after setup.
+Description: Prepare marketplace-ready Shopify listings, export eBay-ready batches, and optionally pair QST Desktop for advanced desktop-first workflows after setup.
 ```
 
 For the plan redirect URL, use:
@@ -362,7 +413,7 @@ The Shopify dashboard must work without QST Desktop. The desktop app is an optio
 Safe wording:
 
 ```text
-QST Desktop is an optional companion for merchants who want bulk preparation, local review, and one-click eBay publishing automation outside Shopify Admin after setup.
+QST Desktop is an optional companion for merchants who want advanced desktop-first workflows outside Shopify Admin after setup.
 ```
 
 Do not say:
@@ -384,11 +435,27 @@ When the Windows installer is hosted:
 ```env
 QST_DESKTOP_VERSION=1.0.0
 QST_DESKTOP_DOWNLOAD_URL=https://your-hosted-qst-installer-url
+QST_DESKTOP_PAIRING_ENABLED=false
 ```
 
 4. Redeploy.
 5. Open the embedded Shopify app.
 6. Confirm the Windows companion card shows a download button.
+
+Do not use Shopify Admin `Content > Files` for the Windows installer if the file is over that store's file-size limit. The current installer is about 112 MB. Upload the URL-friendly copy at `C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\releases\installer\QST-Setup-v1.0.exe` as a GitHub Release asset or host it on a dedicated downloads bucket/domain, then use that public HTTPS URL in `QST_DESKTOP_DOWNLOAD_URL`.
+
+Fast GitHub Release path:
+
+```powershell
+gh auth login
+gh release create v1.0.0 "C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\releases\installer\QST-Setup-v1.0.exe" --repo q-marx/qst-shopify-dashboard --title "QST Desktop v1.0.0" --notes "QST Desktop Windows installer for Shopify review." --draft
+```
+
+After you publish the release, the public installer URL should be:
+
+```text
+https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
+```
 
 If the installer is not hosted yet:
 
@@ -423,9 +490,13 @@ POST /api/desktop/pairing/:code/redeem
 
 Important:
 
-- This Shopify dashboard project does not modify QST desktop.
-- If the existing desktop build does not yet redeem these pairing endpoints, do not claim live two-way sync in the Shopify submission.
-- Say the desktop companion can be paired for local workflows and one-click eBay publishing after setup only when the released desktop build supports the pairing flow.
+- This Shopify dashboard repo does not ship QST Desktop; desktop changes live in `C:\Users\Mark\Downloads\QST RELEASE VERSION 1 - Codex\QST_RELEASE_SOURCE_729_fixed`.
+- If the public desktop installer does not yet redeem these pairing endpoints, do not claim live two-way sync in the Shopify submission.
+- Say the desktop companion can be paired for advanced local workflows only when the released desktop installer supports the pairing flow.
+- Keep `QST_DESKTOP_PAIRING_ENABLED=false` until the released desktop installer has a screen where the user enters the web-generated code.
+- The desktop source and local PyInstaller bundle now include the pairing-code flow and dashboard-backed eBay OAuth, but the public installer still must be compiled, QA-tested, and published before this can be enabled for merchants.
+- New paired desktop builds no longer require the separate Python `qst_broker` service for Shopify pairing or eBay OAuth; keep the old broker only while supporting older desktop builds.
+- Once that desktop build is released and QA-tested, set `QST_DESKTOP_PAIRING_ENABLED=true` in Render and redeploy.
 
 ## 7. Embedded App Functional QA
 
@@ -546,7 +617,7 @@ Feature bullets:
 - Browser-local bulk prep for selected products without editing Shopify product records.
 - Draft marketplace titles, descriptions, and tags.
 - Export selected products as CSV or copy-ready listing packs.
-- Optional Windows companion for larger local workflows and one-click eBay publishing automation after setup.
+- Optional Windows companion for advanced desktop-first workflows after setup.
 
 Reviewer note:
 

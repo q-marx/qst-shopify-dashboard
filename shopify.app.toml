@@ -20,6 +20,7 @@ direct_api_mode = "online"
 
 [auth]
 redirect_urls = [
+  "https://qst-shopify-dashboard.onrender.com/auth/shopify/callback",
   "https://qst-shopify-dashboard.onrender.com/auth/callback"
 ]
 

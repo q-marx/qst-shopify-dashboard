@@ -1,4 +1,4 @@
-const endpoint = process.argv[2] || "https://qst-shopify-dashboard.onrender.com/api/health";
+const endpoint = process.argv[2] || "https://qst-shopify-dashboard.onrender.com/readyz";
 
 const response = await fetch(endpoint, {
   headers: {

@@ -53,10 +53,17 @@ const state = {
   billing: null,
   billingLoading: false,
   billingError: "",
+  ebayConnection: null,
+  ebayConnectionLoading: false,
+  ebayConnectionError: "",
   ebaySettings: defaultEbaySettingsPayload(),
   ebaySettingsLoading: false,
   ebaySettingsSaving: false,
   ebaySettingsError: "",
+  recentListings: [],
+  recentExports: [],
+  activityLoading: false,
+  activityError: "",
   pairing: null,
   pairingLoading: false,
   pairingError: ""
@@ -67,7 +74,9 @@ const app = document.querySelector("#app");
 renderShell();
 refreshProducts();
 refreshAccount();
+refreshEbayConnection();
 refreshEbaySettings();
+refreshActivity();
 
 async function refreshProducts() {
   state.loading = true;
@@ -138,15 +147,72 @@ async function refreshEbaySettings() {
   }
 }
 
+async function refreshEbayConnection() {
+  if (!isEmbeddedShopifyContext() && !demoMode) {
+    state.ebayConnection = null;
+    return;
+  }
+
+  state.ebayConnectionLoading = true;
+  state.ebayConnectionError = "";
+  renderEbayWorkflow();
+
+  try {
+    state.ebayConnection = await backendRequest(`/api/ebay/connection${accountContextQuery()}`);
+  } catch (error) {
+    state.ebayConnectionError = error.message || "Could not load eBay connection status.";
+  } finally {
+    state.ebayConnectionLoading = false;
+    renderEbayWorkflow();
+  }
+}
+
+async function refreshActivity() {
+  if (!isEmbeddedShopifyContext() && !demoMode) {
+    state.recentListings = [];
+    state.recentExports = [];
+    return;
+  }
+
+  state.activityLoading = true;
+  state.activityError = "";
+  renderActivityPanel();
+
+  try {
+    const [listings, exportsPayload] = await Promise.all([
+      backendRequest(`/api/listings/recent${accountContextQuery()}`),
+      backendRequest(`/api/exports/recent${accountContextQuery()}`)
+    ]);
+    state.recentListings = listings.listings || [];
+    state.recentExports = exportsPayload.exports || [];
+  } catch (error) {
+    state.activityError = error.message || "Could not load recent listing activity.";
+  } finally {
+    state.activityLoading = false;
+    renderActivityPanel();
+  }
+}
+
 function renderShell() {
   app.innerHTML = `
     <main class="app-shell">
-      <section class="hero-band">
+      <nav class="app-nav" aria-label="QST workspace sections">
+        <a href="#overview">Overview</a>
+        <a href="#products">Products</a>
+        <a href="#listing-review">Listing review</a>
+        <a href="#ebay-connection">eBay connection</a>
+        <a href="#exports">Exports</a>
+        <a href="#desktop-companion">Desktop companion</a>
+        <a href="#settings">Settings</a>
+        <a href="#support">Support</a>
+      </nav>
+
+      <section class="hero-band" id="overview">
         <div>
           <p class="eyebrow">Read-only Shopify product workspace</p>
-          <h1>Prepare marketplace listing drafts inside Shopify Admin.</h1>
+          <h1>Prepare eBay listings from Shopify products inside Shopify Admin.</h1>
           <p class="hero-copy">
-            Search products, review readiness, adjust listing copy, and export marketplace-ready packs from inside Shopify Admin.
+            Search products, review readiness, connect eBay, save prepared listing drafts, and export marketplace-ready packs without changing your Shopify catalogue.
           </p>
         </div>
         <div class="source-card" id="source-card"></div>
@@ -156,9 +222,11 @@ function renderShell() {
 
       <section class="account-grid" id="account-panel"></section>
 
+      <section class="activity-panel" id="activity-panel"></section>
+
       <section class="workflow-panel" id="ebay-workflow"></section>
 
-      <section class="toolbar">
+      <section class="toolbar" id="settings">
         <label class="search-field">
           <span>Search</span>
           <input id="search-input" type="search" placeholder="Title, SKU, tag, type..." autocomplete="off" />
@@ -203,9 +271,10 @@ function renderShell() {
         <button class="secondary-button" id="refresh-button">Refresh</button>
       </section>
 
+      <div id="products"></div>
       <section class="bulk-panel" id="bulk-panel"></section>
 
-      <section class="workspace-grid">
+      <section class="workspace-grid" id="listing-review">
         <div class="panel product-panel">
           <div class="panel-heading">
             <div>
@@ -228,7 +297,7 @@ function renderShell() {
         </aside>
       </section>
 
-      <section class="export-bar">
+      <section class="export-bar" id="exports">
         <div>
           <strong id="selected-summary">No products selected</strong>
           <p>Exports are generated from read-only Shopify data. Local draft and image edits are saved in this browser.</p>
@@ -239,6 +308,11 @@ function renderShell() {
           <button class="secondary-button" id="export-workspace-pack">Download workspace pack</button>
           <button class="primary-button" id="export-pack">Download listing pack</button>
         </div>
+      </section>
+
+      <section class="support-strip" id="support">
+        <strong>QST reads Shopify product information to prepare listings. It does not change your Shopify catalogue.</strong>
+        <span>For review support, use the support and privacy URLs configured in the Shopify App Store listing.</span>
       </section>
     </main>
   `;
@@ -333,6 +407,7 @@ function render() {
   renderSourceCard();
   renderMetrics();
   renderAccountPanel();
+  renderActivityPanel();
   renderEbayWorkflow();
   renderBulkPanel();
   renderProducts();
@@ -389,6 +464,50 @@ function metric(label, value) {
   `;
 }
 
+function renderActivityPanel() {
+  const panel = document.querySelector("#activity-panel");
+  if (!panel) {
+    return;
+  }
+
+  const latestListing = state.recentListings[0];
+  const latestExport = state.recentExports[0];
+  const connection = state.ebayConnection;
+  const ebayStatus = state.ebayConnectionLoading
+    ? "Checking"
+    : connection?.connected
+      ? "Connected"
+      : connection?.configured === false
+        ? "Not configured"
+        : "Not connected";
+  const ebayClass = connection?.connected ? "ok" : connection?.configured === false ? "warning" : "demo";
+
+  panel.innerHTML = `
+    <article>
+      <span class="status-pill ${ebayClass}">${escapeHtml(ebayStatus)}</span>
+      <div>
+        <h2>eBay connection</h2>
+        <p>${escapeHtml(connection?.environment ? `Environment: ${connection.environment}` : "Connect eBay before saving eBay-backed prepared listings.")}</p>
+      </div>
+    </article>
+    <article>
+      <span class="status-pill ${latestListing ? "ok" : "neutral"}">${escapeHtml(state.recentListings.length)}</span>
+      <div>
+        <h2>Prepared listings</h2>
+        <p>${latestListing ? `${latestListing.productTitle} - ${latestListing.status}` : "No persisted listing preparations yet."}</p>
+      </div>
+    </article>
+    <article>
+      <span class="status-pill ${latestExport ? "ok" : "neutral"}">${escapeHtml(state.recentExports.length)}</span>
+      <div>
+        <h2>Recent exports</h2>
+        <p>${latestExport ? `${latestExport.exportType} - ${latestExport.productCount} product${latestExport.productCount === 1 ? "" : "s"}` : "No export records yet."}</p>
+      </div>
+    </article>
+    ${state.activityError ? `<p class="inline-error">${escapeHtml(state.activityError)}</p>` : ""}
+  `;
+}
+
 function renderEbayWorkflow() {
   const panel = document.querySelector("#ebay-workflow");
   if (!panel) {
@@ -409,7 +528,14 @@ function renderEbayWorkflow() {
   const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
   const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
-  const ebaySetupSummary = state.ebaySettings?.summary || setupSummaryFromSettings(ebaySetup);
+  const ebayConnected = Boolean(state.ebayConnection?.connected);
+  const ebayEnvironment = state.ebayConnection?.environment || "sandbox";
+  const ebayConfigured = state.ebayConnection?.configured !== false;
+  const mergedEbaySetup = {
+    ...ebaySetup,
+    sellerAccountConnected: ebayConnected
+  };
+  const ebaySetupSummary = setupSummaryFromSettings(mergedEbaySetup);
   const setupStatusClass = ebaySetupSummary.ready ? "ok" : ebaySetupSummary.completed ? "demo" : "warning";
   const setupStatusLabel = state.ebaySettingsLoading
     ? "Loading"
@@ -419,14 +545,15 @@ function renderEbayWorkflow() {
 
   panel.innerHTML = `
     <div class="workflow-copy">
-      <p class="eyebrow">eBay batch workflow</p>
-      <h2>Prepare an eBay-ready batch from Shopify products</h2>
+      <p class="eyebrow" id="ebay-connection">eBay connection and preparation</p>
+      <h2>Prepare an eBay listing workflow from Shopify products</h2>
       <p>
-        QST turns selected Shopify products into an eBay review pack with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
+        QST turns selected Shopify products into persisted prepared listing records and export packs with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
-        The Shopify dashboard prepares and exports the batch. QST Desktop is optional, and can continue from the same workspace for one-click eBay publishing automation after eBay setup.
+        Environment: ${escapeHtml(ebayEnvironment)}. QST does not claim a live eBay publish unless eBay confirms one.
       </p>
+      ${state.ebayConnectionError ? `<p class="inline-error">${escapeHtml(state.ebayConnectionError)}</p>` : ""}
     </div>
     <div class="workflow-status">
       <div>
@@ -448,20 +575,23 @@ function renderEbayWorkflow() {
     </div>
     <div class="workflow-actions">
       <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} eBay-ready` : ""}</span>
+      <button class="secondary-button" id="connect-ebay" ${state.ebayConnectionLoading || !ebayConfigured || ebayConnected ? "disabled" : ""}>${state.ebayConnectionLoading ? "Checking..." : ebayConnected ? "eBay connected" : "Connect eBay"}</button>
+      <button class="secondary-button" id="disconnect-ebay" ${state.ebayConnectionLoading || !ebayConnected ? "disabled" : ""}>Disconnect</button>
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select eBay-ready</button>
+      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prepared listings</button>
       <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download publish plan</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay batch</button>
     </div>
     <div class="workflow-setup">
       <div class="setup-heading">
         <div>
-          <h3>eBay publishing setup tracker</h3>
-          <p>Track the setup needed before optional QST Desktop one-click eBay publishing or a future hosted eBay publish flow.</p>
+          <h3>eBay setup and validation</h3>
+          <p>OAuth connection state is stored per Shopify shop. Business policies, dispatch location, and category notes are seller-controlled setup checks for the next eBay action.</p>
         </div>
         <span class="status-pill ${setupStatusClass}">${escapeHtml(setupStatusLabel)}</span>
       </div>
       <div class="setup-checks">
-        ${ebaySetupCheck("sellerAccountConnected", "eBay seller account connected", ebaySetup.sellerAccountConnected)}
+        ${ebaySetupCheck("sellerAccountConnected", `OAuth connected (${ebayEnvironment})`, ebayConnected, { disabled: true })}
         ${ebaySetupCheck("businessPoliciesReady", "Payment, return, and fulfilment policies ready", ebaySetup.businessPoliciesReady)}
         ${ebaySetupCheck("dispatchLocationReady", "Dispatch country/postcode confirmed", ebaySetup.dispatchLocationReady)}
         ${ebaySetupCheck("defaultCategoryReady", "Fallback category chosen", ebaySetup.defaultCategoryReady)}
@@ -473,7 +603,7 @@ function renderEbayWorkflow() {
         </label>
         <label>
           <span>Setup notes</span>
-          <input id="ebay-setup-notes" type="text" value="${escapeAttribute(ebaySetup.notes)}" placeholder="Policy/account notes for the next publishing pass" />
+          <input id="ebay-setup-notes" type="text" value="${escapeAttribute(ebaySetup.notes)}" placeholder="Policy/account notes for the next eBay action" />
         </label>
         <button class="secondary-button" id="save-ebay-setup" ${state.ebaySettingsSaving || state.ebaySettingsLoading ? "disabled" : ""}>
           ${state.ebaySettingsSaving ? "Saving..." : "Save setup"}
@@ -483,7 +613,10 @@ function renderEbayWorkflow() {
     </div>
   `;
 
+  panel.querySelector("#connect-ebay")?.addEventListener("click", startEbayOAuth);
+  panel.querySelector("#disconnect-ebay")?.addEventListener("click", disconnectEbay);
   panel.querySelector("#select-ebay-ready")?.addEventListener("click", selectEbayReadyProducts);
+  panel.querySelector("#prepare-ebay-listings")?.addEventListener("click", prepareSelectedListings);
   panel.querySelector("#download-ebay-plan")?.addEventListener("click", downloadEbayPublishPlan);
   panel.querySelector("#download-ebay-batch")?.addEventListener("click", downloadEbayBatch);
   panel.querySelector("#save-ebay-setup")?.addEventListener("click", saveEbaySetupFromPanel);
@@ -578,13 +711,54 @@ function applyBulkLocalPrep() {
   window.shopify?.toast?.show?.("Bulk prep applied locally.");
 }
 
-function ebaySetupCheck(key, label, checked) {
+function ebaySetupCheck(key, label, checked, options = {}) {
   return `
     <label class="setup-check">
-      <input type="checkbox" data-ebay-setup="${escapeAttribute(key)}" ${checked ? "checked" : ""} />
+      <input type="checkbox" data-ebay-setup="${escapeAttribute(key)}" ${checked ? "checked" : ""} ${options.disabled ? "disabled" : ""} />
       <span>${escapeHtml(label)}</span>
     </label>
   `;
+}
+
+async function startEbayOAuth() {
+  state.ebayConnectionLoading = true;
+  state.ebayConnectionError = "";
+  renderEbayWorkflow();
+
+  try {
+    const result = await backendRequest("/api/ebay/oauth/start", {
+      method: "POST",
+      body: JSON.stringify({
+        shop: inferredShopDomain(),
+        returnTo: window.location.pathname + window.location.search
+      })
+    });
+    window.top.location.href = result.authorizeUrl;
+  } catch (error) {
+    state.ebayConnectionError = error.message || "Could not start eBay OAuth.";
+    state.ebayConnectionLoading = false;
+    renderEbayWorkflow();
+  }
+}
+
+async function disconnectEbay() {
+  state.ebayConnectionLoading = true;
+  state.ebayConnectionError = "";
+  renderEbayWorkflow();
+
+  try {
+    state.ebayConnection = await backendRequest(`/api/ebay/connection${accountContextQuery()}`, {
+      method: "DELETE"
+    });
+    await refreshEbaySettings();
+    window.shopify?.toast?.show?.("eBay connection removed for this Shopify shop.");
+  } catch (error) {
+    state.ebayConnectionError = error.message || "Could not disconnect eBay.";
+  } finally {
+    state.ebayConnectionLoading = false;
+    renderEbayWorkflow();
+    renderActivityPanel();
+  }
 }
 
 async function saveEbaySetupFromPanel() {
@@ -594,7 +768,7 @@ async function saveEbaySetupFromPanel() {
   }
 
   const settings = {
-    sellerAccountConnected: panel.querySelector('[data-ebay-setup="sellerAccountConnected"]')?.checked || false,
+    sellerAccountConnected: Boolean(state.ebayConnection?.connected),
     businessPoliciesReady: panel.querySelector('[data-ebay-setup="businessPoliciesReady"]')?.checked || false,
     dispatchLocationReady: panel.querySelector('[data-ebay-setup="dispatchLocationReady"]')?.checked || false,
     defaultCategoryReady: panel.querySelector('[data-ebay-setup="defaultCategoryReady"]')?.checked || false,
@@ -685,7 +859,8 @@ function renderAccountPanel() {
       ? "Plan is active in Shopify."
       : "Open this app from Shopify Admin to choose a plan.";
   const desktop = account?.desktop ?? {};
-  const canPairDesktop = account?.mode !== "production" || subscriptionActive;
+  const desktopPairingEnabled = desktop.pairingEnabled === true;
+  const canPairDesktop = desktopPairingEnabled && (account?.mode !== "production" || subscriptionActive);
   const planName = subscription?.name || account?.subscription?.planName || "Plan not selected";
   const subscriptionLabel = state.billingLoading
     ? "Checking"
@@ -697,6 +872,10 @@ function renderAccountPanel() {
   const subscriptionClass = subscriptionActive ? "ok" : state.billingError ? "demo" : "warning";
   const desktopStatus = desktop.available ? "Available" : "Optional";
   const desktopVersion = desktop.version && desktop.version !== "Not configured" ? desktop.version : "";
+  const pairingStatus = !desktopPairingEnabled ? "Pending" : state.pairing ? "Ready" : "Not paired";
+  const pairingCopy = desktopPairingEnabled
+    ? "Generate a short code, then enter it in QST Desktop's Shopify workspace pairing screen."
+    : "Pairing is paused until the released QST Desktop build includes the Shopify workspace pairing screen.";
 
   panel.innerHTML = `
     <article class="account-card">
@@ -719,12 +898,12 @@ function renderAccountPanel() {
       </div>
     </article>
 
-    <article class="account-card">
+    <article class="account-card" id="desktop-companion">
       <div class="account-heading">
         <span class="status-pill ${desktop.available ? "ok" : "demo"}">${escapeHtml(desktopStatus)}</span>
         <h2>Windows companion</h2>
       </div>
-      <p class="account-copy">Optional companion for bulk preparation, local review, and one-click eBay publishing automation after setup, using the same Shopify workspace.</p>
+      <p class="account-copy">Optional companion for advanced desktop-first workflows after setup, using the same Shopify workspace.</p>
       ${desktopVersion ? `<p class="muted-copy">Version: ${escapeHtml(desktopVersion)}</p>` : `<p class="muted-copy">The Shopify dashboard can be used without installing QST Desktop; connect it only when you want local automation.</p>`}
       <div class="account-actions">
         ${
@@ -737,15 +916,15 @@ function renderAccountPanel() {
 
     <article class="account-card">
       <div class="account-heading">
-        <span class="status-pill ${state.pairing ? "ok" : "demo"}">${state.pairing ? "Ready" : "Not paired"}</span>
+        <span class="status-pill ${state.pairing ? "ok" : "demo"}">${escapeHtml(pairingStatus)}</span>
         <h2>Desktop pairing</h2>
       </div>
-      <p class="account-copy">If you use QST Desktop, generate a short code to connect it to this Shopify product workspace.</p>
+      <p class="account-copy">${escapeHtml(pairingCopy)}</p>
       ${state.pairing ? pairingCodeMarkup(state.pairing) : ""}
       ${state.pairingError ? `<p class="inline-error">${escapeHtml(state.pairingError)}</p>` : ""}
       <div class="account-actions">
         <button class="secondary-button" id="generate-pairing" ${state.pairingLoading || !canPairDesktop ? "disabled" : ""}>
-          ${state.pairingLoading ? "Generating..." : "Generate code"}
+          ${state.pairingLoading ? "Generating..." : desktopPairingEnabled ? "Generate code" : "Pairing pending"}
         </button>
       </div>
     </article>
@@ -1144,6 +1323,7 @@ function listingWorkbenchPanel() {
         <button class="secondary-button" data-copy-listing-field="tags">Copy tags</button>
         <button class="secondary-button" data-copy-listing-field="pack">Copy full pack</button>
         <button class="secondary-button" data-download-current-listing>Download current listing</button>
+        <button class="secondary-button" data-prepare-current-listing>Save prepared listing</button>
         <button class="primary-button" data-mark-current-ready>Mark ready</button>
       </div>
     </div>
@@ -1159,6 +1339,14 @@ function bindListingWorkbenchControls(container, product) {
 
   container.querySelector("[data-download-current-listing]")?.addEventListener("click", () => {
     downloadCurrentListing(product);
+  });
+
+  container.querySelector("[data-prepare-current-listing]")?.addEventListener("click", async () => {
+    const previousSelection = new Set(state.selectedIds);
+    state.selectedIds = new Set([product.id]);
+    await prepareSelectedListings();
+    state.selectedIds = previousSelection;
+    render();
   });
 
   container.querySelector("[data-mark-current-ready]")?.addEventListener("click", () => {
@@ -1246,13 +1434,15 @@ function downloadCurrentListing(product) {
   const draft = getDraft(product);
   const date = new Date().toISOString().slice(0, 10);
   const name = filenamePart(product.handle || product.title || "listing");
+  const filename = `qst-${state.marketplace}-${name}-${date}.txt`;
   download(
-    `qst-${state.marketplace}-${name}-${date}.txt`,
+    filename,
     buildTextPack([curatedProduct], state.marketplace, {
       [product.id]: draft
     }),
     "text/plain;charset=utf-8"
   );
+  void recordExport("single_listing_pack", [curatedProduct], filename);
   markProductsWorkspaceStatus([product], "exported");
   window.shopify?.toast?.show?.("Current listing downloaded.");
 }
@@ -1843,6 +2033,43 @@ function selectEbayReadyProducts() {
   window.shopify?.toast?.show?.("eBay-ready products selected.");
 }
 
+async function prepareSelectedListings() {
+  const products = getSelectedProductsForExport();
+  if (!products.length) {
+    window.shopify?.toast?.show?.("Select one or more products first.");
+    return;
+  }
+
+  const payloadProducts = products.map((product) => ({
+    product,
+    draft: getDraft(product),
+    checks: state.marketplace === "ebay"
+      ? assessEbayPrep(product).checks
+      : assessReadiness(product).checks
+  }));
+
+  try {
+    const result = await backendRequest("/api/listings/prepare", {
+      method: "POST",
+      body: JSON.stringify({
+        shop: inferredShopDomain(),
+        marketplace: state.marketplace,
+        products: payloadProducts
+      })
+    });
+    const failed = (result.records || []).filter((record) => record.status !== "prepared").length;
+    markProductsWorkspaceStatus(products, failed ? "drafted" : "ready");
+    await refreshActivity();
+    window.shopify?.toast?.show?.(
+      failed
+        ? `Prepared with ${failed} validation issue${failed === 1 ? "" : "s"}.`
+        : "Prepared listing records saved."
+    );
+  } catch (error) {
+    window.shopify?.toast?.show?.(error.message || "Could not save prepared listings.");
+  }
+}
+
 function downloadEbayBatch() {
   let products = getSelectedProductsForExport();
   if (!products.length) {
@@ -1858,7 +2085,9 @@ function downloadEbayBatch() {
 
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
-  download(`qst-ebay-ready-batch-${date}.csv`, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
+  const filename = `qst-ebay-ready-batch-${date}.csv`;
+  download(filename, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
+  void recordExport("ebay_batch_csv", products, filename);
   markProductsWorkspaceStatus(products, "exported");
   window.shopify?.toast?.show?.("eBay batch generated.");
 }
@@ -1879,13 +2108,15 @@ function downloadEbayPublishPlan() {
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
+  const filename = `qst-ebay-publish-plan-${date}.json`;
   download(
-    `qst-ebay-publish-plan-${date}.json`,
+    filename,
     buildEbayPublishPlan(products, ebaySetup, draftOverrides),
     "application/json;charset=utf-8"
   );
+  void recordExport("ebay_publish_plan", products, filename);
   markProductsWorkspaceStatus(products, "ready");
-  window.shopify?.toast?.show?.("eBay publish plan generated.");
+  window.shopify?.toast?.show?.("eBay review plan generated.");
 }
 
 function exportSelected(type) {
@@ -1898,16 +2129,44 @@ function exportSelected(type) {
   const date = new Date().toISOString().slice(0, 10);
   const baseName = `qst-${state.marketplace}-listing-pack-${date}`;
   const draftOverrides = getDraftOverridesForExport(products);
+  let filename = "";
+  let exportType = "";
   if (type === "csv") {
-    download(`${baseName}.csv`, buildCsv(products, state.marketplace, draftOverrides), "text/csv;charset=utf-8");
+    filename = `${baseName}.csv`;
+    exportType = "marketplace_csv";
+    download(filename, buildCsv(products, state.marketplace, draftOverrides), "text/csv;charset=utf-8");
   } else if (type === "workspace-json") {
-    download(`${baseName}.workspace.json`, buildWorkspacePack(products, state.marketplace, draftOverrides), "application/json;charset=utf-8");
+    filename = `${baseName}.workspace.json`;
+    exportType = "workspace_pack_json";
+    download(filename, buildWorkspacePack(products, state.marketplace, draftOverrides), "application/json;charset=utf-8");
   } else {
-    download(`${baseName}.txt`, buildTextPack(products, state.marketplace, draftOverrides), "text/plain;charset=utf-8");
+    filename = `${baseName}.txt`;
+    exportType = "copy_ready_listing_pack";
+    download(filename, buildTextPack(products, state.marketplace, draftOverrides), "text/plain;charset=utf-8");
   }
 
+  void recordExport(exportType, products, filename);
   markProductsWorkspaceStatus(products, "exported");
   window.shopify?.toast?.show?.("QST export generated.");
+}
+
+async function recordExport(exportType, products, filename) {
+  try {
+    await backendRequest("/api/exports/record", {
+      method: "POST",
+      body: JSON.stringify({
+        shop: inferredShopDomain(),
+        marketplace: state.marketplace,
+        exportType,
+        productCount: products.length,
+        productIds: products.map((product) => product.id),
+        filename
+      })
+    });
+    await refreshActivity();
+  } catch {
+    // Export files are still valid if activity persistence is temporarily unavailable.
+  }
 }
 
 function download(filename, content, type) {

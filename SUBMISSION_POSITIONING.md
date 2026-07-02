@@ -8,8 +8,10 @@ QST Listing Workspace is the Shopify Admin app. It must be useful on its own:
 - searches and filters products
 - checks listing readiness
 - lets merchants review and adjust marketplace listing drafts
+- connects eBay through OAuth when sandbox or production credentials are configured
+- saves prepared eBay listing records with validation outcomes
 - prepares eBay-ready batch files with prices, SKUs, image URLs, variant rows, readiness notes, and category search hints
-- tracks eBay publishing setup readiness for seller account, policies, dispatch location, and fallback category
+- tracks eBay setup readiness for seller account connection, policies, dispatch location, and fallback category
 - exports an eBay publish-plan JSON file for reviewing the inventory item, offer, and publish sequence before any live publishing workflow
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest
 - supports export-only primary/included image selection without editing Shopify media
@@ -29,7 +31,7 @@ required for the Shopify app to function.
 Use:
 
 ```text
-QST Desktop is an optional companion for merchants who want bulk preparation, local review, and one-click eBay publishing automation outside Shopify Admin after setup.
+QST Desktop is an optional companion for merchants who want advanced desktop-first listing workflows outside Shopify Admin after setup.
 ```
 
 ```text
@@ -37,7 +39,7 @@ The Shopify app works inside Shopify Admin without installing QST Desktop. Merch
 ```
 
 ```text
-The dashboard and desktop companion align around the same Shopify product workspace. The dashboard reads Shopify product data and prepares export-ready drafts; the optional desktop companion can be paired to the workspace for heavier local workflows and one-click eBay publishing automation after setup.
+The dashboard and desktop companion align around the same Shopify product workspace. The dashboard reads Shopify product data and prepares export-ready drafts; the optional desktop companion can be connected to the workspace for advanced desktop-first workflows after the released desktop build supports that flow.
 ```
 
 Avoid:
@@ -65,16 +67,16 @@ The dashboard is the Shopify-native workspace:
 - product data comes from Shopify through App Bridge/Admin GraphQL
 - data access is read-only
 - drafts and exports are prepared in the browser
-- Shopify subscription and pairing state are shown in Admin
+- Shopify subscription and desktop pairing availability are shown in Admin
 
 The desktop companion should be presented as additive:
 
-- helps with bulk preparation, local workflows, and advanced marketplace automation
+- helps with bulk preparation, local workflows, and advanced marketplace automation where supported by the released desktop build
 - can publish eligible products to eBay after the merchant connects eBay and completes eBay setup in the desktop companion
-- can turn dashboard-prepared eBay drafts into a faster one-click eBay publishing workflow after setup
+- can continue from dashboard-prepared eBay drafts after setup
 - can use listing drafts, image choices, SKU readiness, and eBay setup notes prepared in the Shopify dashboard
 - can use the same product-level marketplace status context when merchants continue work outside Shopify Admin
-- can use a short pairing code to associate with the Shopify workspace
+- can use a short pairing code to associate with the Shopify workspace once the released desktop build supports code redemption
 - should not be needed to search, review, edit, or export listing drafts in Shopify Admin
 - should not be described as required for the Shopify app's eBay-ready batch preparation
 
@@ -97,7 +99,7 @@ Feature bullets:
 - Read-only product workspace for marketplace listing preparation
 - Product readiness checks for title, description, image, price, SKU, and status
 - eBay-ready batch preparation with draft copy, variant rows, image URLs, and category search hints
-- eBay setup tracker for account, policy, dispatch location, and fallback category readiness
+- eBay OAuth connection and setup validation for account, policy, dispatch location, and fallback category readiness
 - eBay publish-plan export for reviewing the inventory item, offer, and publish sequence
 - QST workspace pack export with listing data, promo-page HTML, variants, and image URL manifest
 - Export-only image selection for choosing primary/included listing images without changing Shopify
@@ -108,7 +110,7 @@ Feature bullets:
 - Browser-local bulk prep for selected products without editing Shopify product records
 - Draft marketplace titles, descriptions, and tags
 - Export selected products as CSV or copy-ready listing packs
-- Optional Windows companion for larger local workflows and one-click eBay publishing automation after setup
+- Optional Windows companion for advanced desktop-first workflows after setup
 
 Reviewer note:
 
