@@ -9,14 +9,14 @@
 5. Test Shopify install/callback in a development store.
 6. Test embedded app load inside Shopify Admin.
 7. Test product retrieval with App Bridge direct Admin GraphQL.
-8. Test eBay OAuth in sandbox/review mode.
+8. If QST Desktop eBay OAuth is in scope, test eBay OAuth in sandbox/review mode.
 9. Test prepared listing records and export records.
 10. Test desktop pairing endpoints without requiring desktop for the web workflow.
 11. Add the custom QST domain.
 12. Update Shopify Partner Dashboard App URL and redirect URLs.
 13. Update eBay callback/RuName settings if the domain changed.
 14. Switch production traffic.
-15. Monitor Render logs, `/readyz`, Shopify callback logs, and eBay callback outcomes.
+15. Monitor Render logs, `/readyz`, Shopify callback logs, and optional desktop eBay callback outcomes.
 16. Keep the previous broker/dashboard live temporarily if any deployed desktop build still depends on it.
 
 ## Custom domain
@@ -33,6 +33,6 @@ Manual DNS action:
 ## Current blockers requiring user/account action
 
 - Confirm DNS access for `q-mer.ch` or provide the exact person/system that can add the Render DNS record.
-- Add real eBay sandbox/review app credentials in Render.
+- Add real eBay sandbox/review app credentials in Render only if testing optional QST Desktop eBay OAuth.
 - Confirm whether `qst.q-mer.ch` is the exact hostname to use.
 - Confirm Shopify App Pricing plans and public listing URLs.

@@ -23,6 +23,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 The app also includes a Node/Express backend for Shopify compliance webhooks, Shopify OAuth callbacks, optional desktop eBay OAuth callbacks, account status, listing/export records, installer entitlement, and desktop pairing.
 
 For the full launch checklist and remaining setup steps, use [QST_SHOPIFY_LAUNCH_RUNBOOK.md](./QST_SHOPIFY_LAUNCH_RUNBOOK.md).
+Current submission gaps are tracked in [docs/shopify-submission-gap-register.md](./docs/shopify-submission-gap-register.md), and the SST-to-QST history is tracked in [docs/development-timeline.md](./docs/development-timeline.md).
 
 ## Local Demo
 

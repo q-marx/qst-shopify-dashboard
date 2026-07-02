@@ -311,8 +311,16 @@ function renderShell() {
       </section>
 
       <section class="support-strip" id="support">
-        <strong>QST reads Shopify product information to prepare listings. It does not change your Shopify catalogue.</strong>
-        <span>For review support, use the support and privacy URLs configured in the Shopify App Store listing.</span>
+        <div>
+          <strong>QST reads Shopify product information to prepare listings. It does not change your Shopify catalogue.</strong>
+          <span>Prepare drafts, save records, and download export packs inside Shopify Admin. QST Desktop is optional for advanced local workflows.</span>
+        </div>
+        <div class="support-links" aria-label="Support links">
+          <a href="mailto:support@q-mer.ch">Support</a>
+          <a href="https://q-mer.ch/policies/privacy-policy" target="_blank" rel="noreferrer">Privacy</a>
+          <a href="https://q-mer.ch/policies/terms-of-service" target="_blank" rel="noreferrer">Terms</a>
+          <a href="https://q-mer.ch/policies/contact-information" target="_blank" rel="noreferrer">Contact</a>
+        </div>
       </section>
     </main>
   `;
@@ -584,15 +592,30 @@ function renderEbayWorkflow() {
       <div class="setup-heading">
         <div>
           <h3>Export setup notes</h3>
-          <p>Policy, dispatch, and category notes help merchants review exports before importing them elsewhere or continuing in QST Desktop.</p>
+          <p>Optional seller-review checks for details QST cannot infer from Shopify product data. They are saved with review plans and exports.</p>
         </div>
         <span class="status-pill ${setupStatusClass}">${escapeHtml(setupStatusLabel)}</span>
       </div>
       <div class="setup-checks">
         ${webOAuthCheck}
-        ${ebaySetupCheck("businessPoliciesReady", "Seller policy notes ready", ebaySetup.businessPoliciesReady)}
-        ${ebaySetupCheck("dispatchLocationReady", "Dispatch country/postcode confirmed", ebaySetup.dispatchLocationReady)}
-        ${ebaySetupCheck("defaultCategoryReady", "Fallback category note chosen", ebaySetup.defaultCategoryReady)}
+        ${ebaySetupCheck(
+          "businessPoliciesReady",
+          "Policy notes added",
+          "Payment, return, fulfilment, and marketplace seller rules have been captured in setup notes.",
+          ebaySetup.businessPoliciesReady
+        )}
+        ${ebaySetupCheck(
+          "dispatchLocationReady",
+          "Dispatch location added",
+          "Country, postcode, or stock location is recorded for marketplace review.",
+          ebaySetup.dispatchLocationReady
+        )}
+        ${ebaySetupCheck(
+          "defaultCategoryReady",
+          "Fallback category note added",
+          "A default category or search hint is recorded for products needing category review.",
+          ebaySetup.defaultCategoryReady
+        )}
       </div>
       <div class="setup-fields">
         <label>
@@ -709,11 +732,19 @@ function applyBulkLocalPrep() {
   window.shopify?.toast?.show?.("Bulk prep applied locally.");
 }
 
-function ebaySetupCheck(key, label, checked, options = {}) {
+function ebaySetupCheck(key, label, descriptionOrChecked, checkedOrOptions = false, maybeOptions = {}) {
+  const hasDescription = typeof descriptionOrChecked === "string";
+  const description = hasDescription ? descriptionOrChecked : "";
+  const checked = hasDescription ? checkedOrOptions : descriptionOrChecked;
+  const options = hasDescription ? maybeOptions : checkedOrOptions;
+
   return `
     <label class="setup-check">
       <input type="checkbox" data-ebay-setup="${escapeAttribute(key)}" ${checked ? "checked" : ""} ${options.disabled ? "disabled" : ""} />
-      <span>${escapeHtml(label)}</span>
+      <span class="setup-check-copy">
+        <strong>${escapeHtml(label)}</strong>
+        ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+      </span>
     </label>
   `;
 }

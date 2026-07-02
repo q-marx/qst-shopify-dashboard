@@ -39,6 +39,16 @@ Review Shopify products before creating marketplace listings.
 
 - App URL and redirect URLs point at the production custom domain or approved staging URL.
 - `/readyz` reports durable Postgres.
-- Shopify App Pricing is configured in Partner Dashboard.
+- Shopify App Pricing is configured in Partner Dashboard with at least one public plan.
 - Do not include eBay sandbox credentials in the Shopify review flow unless you deliberately enable web eBay OAuth.
 - Support, privacy, terms, and getting-started URLs are live.
+- Screenshots are uploaded in Partner Dashboard listing media.
+
+## Current Public URLs
+
+- Privacy policy: `https://q-mer.ch/policies/privacy-policy`
+- Terms of service: `https://q-mer.ch/policies/terms-of-service`
+- Contact information: `https://q-mer.ch/policies/contact-information`
+- Support email: `support@q-mer.ch`
+
+Publish or update a QST-specific support/getting-started page before submission.

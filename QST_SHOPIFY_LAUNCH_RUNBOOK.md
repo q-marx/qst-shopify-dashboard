@@ -2,7 +2,9 @@
 
 This is the working checklist for getting QST Listing Workspace functioning properly for Shopify review and early customers.
 
-Use this document as the source of truth for the current Shopify dashboard project. The Shopify dashboard can ship without QST Desktop, but the desktop pairing code must stay disabled until a released QST Desktop build can redeem the web-generated pairing code.
+Use this document as the source of truth for the current Shopify dashboard project. The Shopify dashboard can ship without QST Desktop. QST Desktop is optional and the released v1.0 desktop build can redeem the web-generated pairing code.
+
+Current submission gaps are tracked in `docs/shopify-submission-gap-register.md`.
 
 ## Current Known State
 
@@ -19,8 +21,24 @@ Use this document as the source of truth for the current Shopify dashboard proje
 - Current intended Render database region: Frankfurt
 - Current repository target: one paid always-on Render web service plus non-free Render Postgres
 - Render Postgres status: fixed and verified durable on 2026-06-12
+- Render Postgres status reverified durable on 2026-07-02
+- Public installer asset: `https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe`
+- Current submission positioning: marketplace export preparation, not required web eBay OAuth
 
 The direct Render URL is not supposed to show live Shopify products. Live products load inside Shopify Admin because the dashboard uses Shopify App Bridge direct Admin GraphQL access. Direct browser visits can only show an empty or preview state because there is no embedded Shopify session.
+
+## Current Snapshot - 2026-07-02
+
+- Latest pushed dashboard commit: `aeb2b9c Reposition dashboard as export workflow`.
+- Live Render health reports durable Postgres with `fallbackActive: false`.
+- Shopify OAuth install now redirects to the whitelisted `/auth/callback`.
+- Desktop pairing code generation, copy-to-clipboard, and desktop redemption are implemented.
+- The dashboard no longer requires eBay OAuth to save prepared records or download exports.
+- The web workflow should be described as marketplace export preparation.
+- The older public Q-MER.CH sync-tool page still needs copy cleanup before it is used as a Shopify App Store support/marketing destination.
+- QST-specific support/privacy/terms/getting-started draft copy is in `docs/public-pages/`.
+- App Store media upload slots are planned in `docs/app-store-media-plan.md`.
+- Development history is tracked in `docs/development-timeline.md`.
 
 ## Return-To-Work Snapshot - 2026-06-24
 
@@ -63,14 +81,13 @@ Render paid-plan gate:
 
 Work from here:
 
-1. Sync/confirm the paid Render Blueprint and rerun the health check.
+1. Create/confirm Shopify App Pricing, including the public `QST Starter` plan and the hosted plan-selection link.
 2. Deploy or reconfirm Shopify app config from `shopify.app.qst-listing-workspace.toml`.
-3. Confirm Shopify App Pricing, including the public `QST Starter` plan and the hosted plan-selection link.
-4. Run the embedded app QA checklist inside `https://admin.shopify.com/store/sst-test-site/apps/qst-listing-workspace/`.
-5. Capture proof that compliance webhooks are configured in the Shopify Partner Dashboard and that invalid-HMAC probes still return 401.
-6. Decide whether the desktop installer URL will be hosted for review. If not, keep `QST_DESKTOP_DOWNLOAD_URL` blank and leave the dashboard showing `Installer pending`.
-7. Finish App Store submission assets: icon, screenshots, demo screencast, privacy policy URL, support email, support URL, pricing text, and reviewer instructions.
-8. Do the separate desktop release gates from `docs/qa/CURRENT_RELEASE_GAP_AUDIT.md`: installer install/uninstall check, short visible GUI pass, and owner/legal review of release docs.
+3. Run the embedded app QA checklist inside `https://admin.shopify.com/store/sst-test-site/apps/qst-listing-workspace/`.
+4. Capture proof that compliance webhooks are configured in the Shopify Partner Dashboard and that invalid-HMAC probes still return 401.
+5. Publish or update QST-specific support/getting-started/legal pages using `docs/public-pages/`.
+6. Finish App Store submission assets: icon, screenshots, demo screencast, privacy policy URL, support email, support URL, pricing text, and reviewer instructions.
+7. Do the separate desktop release gates from `..\docs\qa\CURRENT_RELEASE_GAP_AUDIT.md`: installer install/uninstall check, short visible GUI pass, code signing, and owner/legal review of release docs.
 
 ## Priority Order
 
@@ -79,7 +96,7 @@ Complete these in this order:
 1. Confirm Render production environment variables.
 2. Deploy Shopify app config.
 3. Confirm Shopify App Pricing.
-4. Configure the desktop installer link or leave it intentionally pending.
+4. Confirm the desktop installer link remains optional.
 5. Run the embedded app QA checklist.
 6. Prepare the Shopify App Store submission assets and wording.
 7. Submit only after all final gates pass.
@@ -369,13 +386,15 @@ Shopify requires public app charges to use Shopify App Pricing or the Shopify Bi
 
 In Partner Dashboard:
 
-1. Open `QST Listing Workspace`.
-2. Open `Distribution`.
-3. Open the Shopify App Store listing submission area.
-4. Open pricing content or pricing setup.
-5. Use Shopify App Pricing.
-6. Keep the private `$0` test plan for development testing.
-7. Create the public paid plan when ready.
+1. Open `Apps > All Apps`.
+2. Click `QST Listing Workspace`.
+3. Open `Distribution`.
+4. Beside the Shopify App Store listing, click `Manage listing`.
+5. Under the published language, click `Edit`.
+6. Under `Pricing content`, click `Manage` to open pricing setup.
+7. Use Shopify App Pricing.
+8. Keep the private `$0` test plan for development testing.
+9. Under `Public plans`, click `Add` and create the public paid plan.
 
 Recommended first public plan:
 
@@ -383,7 +402,7 @@ Recommended first public plan:
 Plan name: QST Starter
 Type: recurring monthly
 Trial: optional
-Description: Prepare marketplace-ready Shopify listings, export eBay-ready batches, and optionally pair QST Desktop for advanced desktop-first workflows after setup.
+Description: Prepare marketplace-ready Shopify listing drafts, export eBay-compatible CSV packs, and optionally pair QST Desktop for advanced local workflows.
 ```
 
 For the plan redirect URL, use:
@@ -406,6 +425,8 @@ QA:
 4. Choose the test plan.
 5. Return to the app.
 6. Confirm the subscription card shows active plan state.
+
+Source reminder: Shopify App Pricing includes a private `$0` test plan for testing, but public plans are the plans visible to merchants and on the Shopify App Store.
 
 ## 6. Configure Desktop Installer And Pairing
 
@@ -539,17 +560,19 @@ Check:
 - Images can be included or excluded from export.
 - Shopify product media is not changed.
 
-### eBay Workflow
+### Marketplace Export Preparation
 
 Check:
 
-- eBay batch workflow panel appears when `eBay` is selected.
-- eBay-ready counts update.
-- `Select eBay-ready` selects eligible products.
-- eBay setup tracker fields save.
-- Download eBay batch works.
-- Download publish plan works.
+- Marketplace export preparation panel appears when `eBay` is selected.
+- Export-ready counts update.
+- `Select export-ready` selects eligible products.
+- Export setup notes explain policy, dispatch, and fallback category checks.
+- Export setup notes save.
+- Download eBay CSV pack works.
+- Download review plan works.
 - Exported or ready local work status updates after downloads.
+- No eBay OAuth connection is required for the Shopify Admin web workflow.
 
 ### Billing And Pairing
 
@@ -559,7 +582,7 @@ Check:
 - Choose/manage plan goes to Shopify's hosted pricing page.
 - Desktop card says optional.
 - Installer button only appears when `QST_DESKTOP_DOWNLOAD_URL` is configured.
-- Pairing code generation works only after subscription is active.
+- Pairing code generation works when the Shopify workspace is authorised and desktop pairing is enabled.
 
 ### Old Revenue Paths
 
@@ -589,16 +612,16 @@ Prepare marketplace-ready listing drafts from your Shopify products without edit
 Short description:
 
 ```text
-Search products, review listing readiness, prepare eBay-ready batches, and export marketplace packs from inside Shopify Admin.
+Search products, review listing readiness, prepare eBay-compatible CSVs, and export marketplace packs from inside Shopify Admin.
 ```
 
 Feature bullets:
 
 - Read-only product workspace for marketplace listing preparation.
 - Product readiness checks for title, description, image, price, SKU, and status.
-- eBay-ready batch preparation with draft copy, variant rows, image URLs, and category search hints.
-- eBay setup tracker for account, policy, dispatch location, and fallback category readiness.
-- eBay publish-plan export for reviewing the inventory item, offer, and publish sequence.
+- eBay-compatible CSV preparation with draft copy, variant rows, image URLs, and category search hints.
+- Export setup notes for policy, dispatch location, and fallback category readiness.
+- Review-plan export for checking product data before import or desktop continuation.
 - QST workspace pack export with listing data, promo-page HTML, variants, and image URL manifest.
 - Export-only image selection for choosing primary and included listing images without changing Shopify.
 - Browser-local draft and image persistence for continuing marketplace preparation after refresh.
@@ -613,7 +636,7 @@ Feature bullets:
 Reviewer note:
 
 ```text
-QST Listing Workspace is fully usable inside Shopify Admin with read-only product access. QST Desktop is optional and is not required to search products, review readiness, prepare eBay-ready batches, edit listing drafts, or export listing packs. The app uses read-only product access and does not write product changes back to Shopify.
+QST Listing Workspace is fully usable inside Shopify Admin with read-only product access. QST Desktop is optional and is not required to search products, review readiness, prepare eBay-compatible CSVs, edit listing drafts, or export listing packs. The app uses read-only product access and does not write product changes back to Shopify.
 ```
 
 ## 9. Submission Assets To Prepare
@@ -630,12 +653,12 @@ Before submission, prepare:
 - Pricing plan details.
 - Terms of service URL if available.
 
-Screenshots should show:
+Screenshots should be uploaded in Shopify Partner Dashboard. Keep local working copies under `docs/app-store-media/` or `..\promo\`. Screenshots should show:
 
 1. Main dashboard with loaded Shopify products.
 2. Readiness and work status filters.
 3. Listing draft panel.
-4. eBay batch workflow.
+4. Marketplace export preparation.
 5. Export/image curation controls.
 6. Subscription and optional desktop companion cards.
 
@@ -646,8 +669,8 @@ Demo video should show:
 3. Open a listing draft.
 4. Edit draft text locally.
 5. Select images for export.
-6. Select eBay-ready products.
-7. Download an eBay batch or workspace pack.
+6. Select export-ready products.
+7. Download an eBay CSV pack or workspace pack.
 8. Show optional QST Desktop pairing without implying it is required.
 
 ## 10. Final Submission Gates

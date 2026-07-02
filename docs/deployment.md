@@ -30,7 +30,10 @@ Production should run as one always-on Render Web Service:
 - `QST_DESKTOP_DOWNLOAD_URL`
 - `QST_PAIRING_TTL_MINUTES`
 - `DATABASE_URL`
-- `EBAY_ENVIRONMENT=sandbox` for review unless production publishing is intentionally enabled
+
+Optional for QST Desktop eBay OAuth only:
+
+- `EBAY_ENVIRONMENT=sandbox` or `production`
 - `EBAY_CLIENT_ID`
 - `EBAY_CLIENT_SECRET`
 - `EBAY_REDIRECT_URI`
@@ -71,7 +74,7 @@ Then check:
 5. Run `npm.cmd run render:health` after deployment.
 6. Confirm `/readyz` returns `ok: true`, `storage: postgres`, and `postgresReady: true`.
 7. Update Shopify Partner Dashboard App URL and allowed redirect URLs.
-8. Update eBay Developer callback/RuName settings to match `EBAY_REDIRECT_URI`.
+8. If testing QST Desktop eBay OAuth, update eBay Developer callback/RuName settings to match `EBAY_REDIRECT_URI`.
 9. Open the app inside Shopify Admin and run `docs/manual-acceptance-test.md`.
 
 ## Callback URLs
@@ -82,7 +85,7 @@ Shopify allowed redirect URLs:
 - `https://qst.q-mer.ch/auth/callback` legacy compatibility route
 - temporary Render equivalents during staging
 
-eBay callback:
+Optional QST Desktop eBay callback:
 
 - Use the value configured as `EBAY_REDIRECT_URI`.
 - If eBay requires a RuName instead of a literal URL, use that RuName in the env var and register the real URL in the eBay Developer portal.
