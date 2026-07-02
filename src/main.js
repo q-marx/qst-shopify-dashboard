@@ -859,8 +859,10 @@ function renderAccountPanel() {
       ? "Plan is active in Shopify."
       : "Open this app from Shopify Admin to choose a plan.";
   const desktop = account?.desktop ?? {};
+  const shopifyReauthorizeUrl = account?.authentication?.shopifyReauthorizeUrl || "";
+  const shopifySessionMissing = Boolean(account && account.authentication?.shopifySessionStored === false && shopifyReauthorizeUrl);
   const desktopPairingEnabled = desktop.pairingEnabled === true;
-  const canPairDesktop = desktopPairingEnabled;
+  const canPairDesktop = desktopPairingEnabled && !shopifySessionMissing;
   const planName = subscription?.name || account?.subscription?.planName || "Plan not selected";
   const subscriptionLabel = state.billingLoading
     ? "Checking"
@@ -872,10 +874,12 @@ function renderAccountPanel() {
   const subscriptionClass = subscriptionActive ? "ok" : state.billingError ? "demo" : "warning";
   const desktopStatus = desktop.available ? "Available" : "Optional";
   const desktopVersion = desktop.version && desktop.version !== "Not configured" ? desktop.version : "";
-  const pairingStatus = !desktopPairingEnabled ? "Pending" : state.pairing ? "Ready" : "Not paired";
-  const pairingCopy = desktopPairingEnabled
-    ? "Generate a short code, then enter it in QST Desktop's Shopify workspace pairing screen."
-    : "Pairing is paused until the released QST Desktop build includes the Shopify workspace pairing screen.";
+  const pairingStatus = !desktopPairingEnabled ? "Pending" : shopifySessionMissing ? "Needs auth" : state.pairing ? "Ready" : "Not paired";
+  const pairingCopy = shopifySessionMissing
+    ? "Re-authorise Shopify first so QST Desktop can load products through this workspace."
+    : desktopPairingEnabled
+      ? "Generate a short code, then enter it in QST Desktop's Shopify workspace pairing screen."
+      : "Pairing is paused until the released QST Desktop build includes the Shopify workspace pairing screen.";
 
   panel.innerHTML = `
     <article class="account-card">
@@ -920,11 +924,13 @@ function renderAccountPanel() {
         <h2>Desktop pairing</h2>
       </div>
       <p class="account-copy">${escapeHtml(pairingCopy)}</p>
+      ${shopifySessionMissing ? `<p class="inline-error">Shopify server authorisation is missing for this store.</p>` : ""}
       ${state.pairing ? pairingCodeMarkup(state.pairing) : ""}
       ${state.pairingError ? `<p class="inline-error">${escapeHtml(state.pairingError)}</p>` : ""}
       <div class="account-actions">
+        ${shopifySessionMissing ? `<a class="secondary-button link-button" href="${escapeAttribute(shopifyReauthorizeUrl)}" target="_top">Re-authorise Shopify</a>` : ""}
         <button class="secondary-button" id="generate-pairing" ${state.pairingLoading || !canPairDesktop ? "disabled" : ""}>
-          ${state.pairingLoading ? "Generating..." : desktopPairingEnabled ? "Generate code" : "Pairing pending"}
+          ${state.pairingLoading ? "Generating..." : shopifySessionMissing ? "Authorise first" : desktopPairingEnabled ? "Generate code" : "Pairing pending"}
         </button>
       </div>
     </article>

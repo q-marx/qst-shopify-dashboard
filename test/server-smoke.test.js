@@ -132,7 +132,16 @@ test("desktop pairing codes are scoped to the verified shop and can only be rede
     redeemed.body.desktopToken
   );
   assert.equal(desktopGraphql.status, 409);
-  assert.match(desktopGraphql.body.error, /No server-side Shopify OAuth session/);
+  assert.match(desktopGraphql.body.error, /server-side Shopify authorisation/);
+  assert.match(desktopGraphql.body.reauthorizeUrl, /\/auth\/shopify\/install\?shop=alpha-shop\.myshopify\.com/);
+
+  const desktopGraphqlLegacy = await postJson(
+    "/desktop/shopify/graphql",
+    { query: "{ shop { name } }", variables: {} },
+    redeemed.body.desktopToken
+  );
+  assert.equal(desktopGraphqlLegacy.status, 409);
+  assert.match(desktopGraphqlLegacy.body.error, /server-side Shopify authorisation/);
 
   const desktopEbayStart = await fetch(`${baseUrl}/ebay/start?slot=2`, {
     headers: { Authorization: `Bearer ${redeemed.body.desktopToken}` }

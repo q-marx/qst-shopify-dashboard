@@ -106,8 +106,12 @@ app.get("/api/health", (_request, response) => {
   });
 });
 
-app.get("/api/account", (request, response) => {
-  response.json(buildAccountPayload(authenticateAppBridgeRequest(request), request));
+app.get("/api/account", async (request, response) => {
+  try {
+    response.json(await buildAccountPayload(authenticateAppBridgeRequest(request), request));
+  } catch (error) {
+    response.status(500).json({ error: redactError(error) });
+  }
 });
 
 app.get("/api/marketplace-settings/ebay", async (request, response) => {
@@ -623,7 +627,7 @@ app.post("/api/desktop/pairing/:code/redeem", async (request, response) => {
   });
 });
 
-app.post("/api/desktop/shopify/graphql", async (request, response) => {
+app.post(["/api/desktop/shopify/graphql", "/desktop/shopify/graphql"], async (request, response) => {
   const context = await requireDesktopPairingContext(request, response);
   if (!context) {
     return;
@@ -641,8 +645,10 @@ app.post("/api/desktop/shopify/graphql", async (request, response) => {
   try {
     const session = await getShopifySession(context.shop);
     if (!session?.accessToken) {
+      const reauthorizeUrl = `${publicBaseUrl(request)}/auth/shopify/install?shop=${encodeURIComponent(context.shop)}`;
       response.status(409).json({
-        error: "No server-side Shopify OAuth session is stored for this shop. Open the Shopify app once, then pair QST Desktop again."
+        error: "QST Desktop is paired, but this Shopify workspace needs server-side Shopify authorisation before products can load. Re-authorise Shopify in QST Listing Workspace, then generate a fresh desktop pairing code.",
+        reauthorizeUrl
       });
       return;
     }
@@ -1065,11 +1071,17 @@ async function handleWebhook(request, response) {
   response.status(200).json({ ok: true });
 }
 
-function buildAccountPayload(auth, request) {
+async function buildAccountPayload(auth, request) {
   const appHandle = process.env.QST_SHOPIFY_APP_HANDLE || "qst-listing-workspace";
   const downloadUrl = process.env.QST_DESKTOP_DOWNLOAD_URL ? "/api/desktop/download" : null;
   const pricingPath = `/charges/${appHandle}/pricing_plans`;
   const storeHandle = storeHandleFromRequest(request, auth.shop);
+  const shop = normalizeShopDomain(auth.shop) || normalizeShopDomain(request.query.shop) || normalizeShopDomain(storeHandle);
+  const canExposeShopifySession = Boolean(shop && (auth.authenticated || !isProduction));
+  const shopifySession = canExposeShopifySession ? await getShopifySession(shop) : null;
+  const shopifyReauthorizeUrl = shop
+    ? `/auth/shopify/install?shop=${encodeURIComponent(shop)}`
+    : null;
   const pricingUrl = storeHandle
     ? `https://admin.shopify.com/store/${encodeURIComponent(storeHandle)}${pricingPath}`
     : null;
@@ -1081,7 +1093,9 @@ function buildAccountPayload(auth, request) {
     authentication: {
       authenticated: auth.authenticated,
       reason: auth.reason,
-      shop: auth.shop || null
+      shop: auth.shop || shop || null,
+      shopifySessionStored: Boolean(shopifySession?.accessToken),
+      shopifyReauthorizeUrl
     },
     subscription: {
       provider: "shopify_app_pricing",
