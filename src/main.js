@@ -1272,31 +1272,41 @@ function renderDraft() {
   subtitle.textContent = `${marketplaceLabel(state.marketplace)} draft for ${product.title}`;
   content.innerHTML = `
     <div class="draft-stack">
-      <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
-      ${workspaceStatusPanel(product)}
-      ${imageCurationPanel(product)}
-      <label>
-        <span>Marketplace title</span>
-        <input type="text" data-draft-field="title" value="${escapeAttribute(draft.title)}" />
-      </label>
-      <label>
-        <span>Description</span>
-        <textarea rows="9" data-draft-field="description">${escapeHtml(draft.description)}</textarea>
-      </label>
-      <label>
-        <span>Suggested tags</span>
-        <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
-      </label>
-      ${listingWorkbenchPanel()}
-      ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
-      <div class="checklist">
-        <h3>Readiness checks</h3>
-        ${readiness.checks.map(checkItem).join("")}
-      </div>
-      <div class="variant-box">
-        <h3>Variants</h3>
-        ${variantList(product)}
-      </div>
+      <section class="draft-overview-grid">
+        <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
+        <div class="draft-overview-details">
+          ${workspaceStatusPanel(product)}
+          ${imageCurationPanel(product)}
+        </div>
+      </section>
+      <section class="draft-editor-grid">
+        <div class="draft-fields-card">
+          <label>
+            <span>Marketplace title</span>
+            <input type="text" data-draft-field="title" value="${escapeAttribute(draft.title)}" />
+          </label>
+          <label>
+            <span>Description</span>
+            <textarea rows="9" data-draft-field="description">${escapeHtml(draft.description)}</textarea>
+          </label>
+          <label>
+            <span>Suggested tags</span>
+            <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
+          </label>
+        </div>
+        <div class="draft-review-column">
+          ${listingWorkbenchPanel()}
+          ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
+          <div class="checklist">
+            <h3>Readiness checks</h3>
+            ${readiness.checks.map(checkItem).join("")}
+          </div>
+          <div class="variant-box">
+            <h3>Variants</h3>
+            ${variantList(product)}
+          </div>
+        </div>
+      </section>
     </div>
   `;
 

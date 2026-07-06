@@ -594,7 +594,7 @@ button:focus-visible {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -618,7 +618,7 @@ button:focus-visible {
 }
 
 .product-list {
-  max-height: 650px;
+  max-height: 390px;
   overflow: auto;
 }
 
@@ -686,8 +686,7 @@ button:focus-visible {
 }
 
 .draft-panel {
-  position: sticky;
-  top: 16px;
+  position: static;
 }
 
 .draft-stack {
@@ -696,11 +695,34 @@ button:focus-visible {
   padding: 18px;
 }
 
+.draft-overview-grid,
+.draft-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.draft-overview-details,
+.draft-review-column,
+.draft-fields-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.draft-fields-card {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
 .draft-image {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 190px;
+  height: clamp(240px, 24vw, 320px);
   border: 1px solid #dcdfe4;
   border-radius: 8px;
   background: #f1f2f3;
@@ -1038,6 +1060,11 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .draft-overview-grid,
+  .draft-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1058,6 +1085,10 @@ button:focus-visible {
 
   .draft-panel {
     position: static;
+  }
+
+  .draft-image {
+    height: 260px;
   }
 }
 
