@@ -1294,17 +1294,19 @@ function renderDraft() {
             <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
           </label>
         </div>
-        <div class="draft-review-column">
+        <div class="draft-action-column">
           ${listingWorkbenchPanel()}
           ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
-          <div class="checklist">
-            <h3>Readiness checks</h3>
-            ${readiness.checks.map(checkItem).join("")}
-          </div>
-          <div class="variant-box">
-            <h3>Variants</h3>
-            ${variantList(product)}
-          </div>
+        </div>
+      </section>
+      <section class="draft-validation-grid">
+        <div class="checklist">
+          <h3>Readiness checks</h3>
+          ${readiness.checks.map(checkItem).join("")}
+        </div>
+        <div class="variant-box">
+          <h3>Variants</h3>
+          ${variantList(product)}
         </div>
       </section>
     </div>
@@ -1567,7 +1569,7 @@ function imageCurationPanel(product) {
         </div>
         <span>${includedCount}/${entries.length} included</span>
       </div>
-      <div class="image-choice-list">
+      <div class="image-choice-list ${entries.length > 4 ? "scrollable" : ""}">
         ${entries.map((entry) => imageChoiceRow(entry, override, primaryUrl)).join("")}
       </div>
     </div>

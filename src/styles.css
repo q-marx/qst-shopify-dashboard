@@ -67,6 +67,14 @@ button {
   color: #006e52;
 }
 
+#products,
+#listing-review,
+#exports,
+#desktop-companion,
+#support {
+  scroll-margin-top: 72px;
+}
+
 .hero-band {
   display: grid;
   grid-template-columns: 1fr minmax(260px, 360px);
@@ -704,11 +712,18 @@ button:focus-visible {
 }
 
 .draft-overview-details,
-.draft-review-column,
+.draft-action-column,
 .draft-fields-card {
   display: grid;
   gap: 14px;
   min-width: 0;
+}
+
+.draft-validation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .draft-fields-card {
@@ -836,14 +851,20 @@ button:focus-visible {
   gap: 10px;
 }
 
+.image-choice-list.scrollable {
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .image-choice {
   display: grid;
-  grid-template-columns: 70px 54px minmax(0, 1fr) auto;
+  grid-template-columns: 70px 48px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   border: 1px solid #eff1f2;
   border-radius: 6px;
-  padding: 8px;
+  padding: 7px 8px;
   background: #fbfbfc;
 }
 
@@ -853,8 +874,8 @@ button:focus-visible {
 }
 
 .image-choice img {
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   border: 1px solid #dcdfe4;
   border-radius: 6px;
   object-fit: cover;
@@ -1061,7 +1082,8 @@ button:focus-visible {
   }
 
   .draft-overview-grid,
-  .draft-editor-grid {
+  .draft-editor-grid,
+  .draft-validation-grid {
     grid-template-columns: 1fr;
   }
 
