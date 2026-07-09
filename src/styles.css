@@ -521,7 +521,7 @@ button:disabled,
 
 .bulk-controls {
   display: grid;
-  grid-template-columns: minmax(120px, 0.7fr) minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  grid-template-columns: minmax(165px, 0.85fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
   gap: 10px;
   align-items: end;
 }
@@ -690,7 +690,8 @@ button:focus-visible {
 
 .work-status-pill {
   justify-self: end;
-  min-width: 86px;
+  min-width: 118px;
+  white-space: nowrap;
 }
 
 .draft-panel {

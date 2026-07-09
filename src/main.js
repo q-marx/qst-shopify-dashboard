@@ -17,9 +17,9 @@ const demoMode = import.meta.env.VITE_QST_DEMO_MODE !== "false";
 const LOCAL_WORKSPACE_VERSION = 1;
 const WORKSPACE_STATUS_OPTIONS = [
   { value: "not_started", label: "Not started", className: "neutral" },
-  { value: "drafted", label: "Drafted", className: "demo" },
-  { value: "ready", label: "Ready", className: "ok" },
-  { value: "exported", label: "Exported", className: "ok" }
+  { value: "drafted", label: "Draft saved", className: "demo" },
+  { value: "ready", label: "Ready to export", className: "ok" },
+  { value: "exported", label: "Export downloaded", className: "ok" }
 ];
 const WORKSPACE_STATUS_VALUES = new Set(WORKSPACE_STATUS_OPTIONS.map((option) => option.value));
 const MARKETPLACE_TITLE_LIMITS = {
@@ -212,7 +212,7 @@ function renderShell() {
           <p class="eyebrow">Read-only Shopify product workspace</p>
           <h1>Prepare marketplace export packs from Shopify products inside Shopify Admin.</h1>
           <p class="hero-copy">
-            Search products, review readiness, save prepared listing drafts, and download marketplace-ready packs without changing your Shopify catalogue.
+            Search products, review readiness, save draft records, and download marketplace-ready packs without changing your Shopify catalogue.
           </p>
         </div>
         <div class="source-card" id="source-card"></div>
@@ -250,9 +250,9 @@ function renderShell() {
           </select>
         </label>
         <label>
-          <span>Work status</span>
+          <span>Prep status</span>
           <select id="work-status-filter">
-            <option value="all">All work</option>
+            <option value="all">All prep</option>
             ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
           </select>
         </label>
@@ -316,7 +316,7 @@ function renderShell() {
           <span>Prepare drafts, save records, and download export packs inside Shopify Admin. QST Desktop is optional for advanced local workflows.</span>
         </div>
         <div class="support-links" aria-label="Support links">
-          <a href="mailto:support@q-mer.ch">Support</a>
+          <a href="mailto:qst.support@q-mer.ch">Support</a>
           <a href="https://q-mer.ch/policies/privacy-policy" target="_blank" rel="noreferrer">Privacy</a>
           <a href="https://q-mer.ch/policies/terms-of-service" target="_blank" rel="noreferrer">Terms</a>
           <a href="https://q-mer.ch/policies/contact-information" target="_blank" rel="noreferrer">Contact</a>
@@ -494,8 +494,8 @@ function renderActivityPanel() {
     <article>
       <span class="status-pill ${latestListing ? "ok" : "neutral"}">${escapeHtml(state.recentListings.length)}</span>
       <div>
-        <h2>Prepared listings</h2>
-        <p>${latestListing ? `${latestListing.productTitle} - ${latestListing.status}` : "No persisted listing preparations yet."}</p>
+        <h2>Saved prep records</h2>
+        <p>${latestListing ? `${latestListing.productTitle} - ${latestListing.status}` : "No saved preparation records yet."}</p>
       </div>
     </article>
     <article>
@@ -555,7 +555,7 @@ function renderEbayWorkflow() {
       <p class="eyebrow" id="marketplace-export">Marketplace export preparation</p>
       <h2>Prepare export-ready listing packs from Shopify products</h2>
       <p>
-        QST turns selected Shopify products into persisted prepared listing records and export packs with draft copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
+        QST turns selected Shopify products into draft records and export packs with copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
         The Shopify app creates review packs and eBay-compatible CSV exports. Direct eBay publishing remains available in QST Desktop after the merchant connects eBay there.
@@ -584,7 +584,7 @@ function renderEbayWorkflow() {
       <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} export-ready` : ""}</span>
       ${webOAuthControls}
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select export-ready</button>
-      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prepared records</button>
+      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prep records</button>
       <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review plan</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay CSV pack</button>
     </div>
@@ -664,9 +664,9 @@ function renderBulkPanel() {
     <div class="bulk-controls">
       <span class="batch-state">${escapeHtml(selectedText)}</span>
       <label>
-        <span>Status</span>
+        <span>Prep status</span>
         <select id="bulk-status">
-          <option value="">Keep status</option>
+          <option value="">Keep prep status</option>
           ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
         </select>
       </label>
@@ -1333,14 +1333,14 @@ function workspaceStatusPanel(product) {
     <div class="workspace-status-card">
       <div class="workspace-status-heading">
         <div>
-          <h3>${escapeHtml(marketplaceLabel(state.marketplace))} workspace status</h3>
-          <p>Local progress only. Shopify is not changed.</p>
+          <h3>Export prep status</h3>
+          <p>QST tracking only. No marketplace listing is published.</p>
         </div>
         <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
       </div>
       <div class="workspace-status-controls">
         <label>
-          <span>Status</span>
+          <span>Prep status</span>
           <select id="workspace-status-select">
             ${WORKSPACE_STATUS_OPTIONS.map(
               (option) => `<option value="${escapeAttribute(option.value)}" ${option.value === current.status ? "selected" : ""}>${escapeHtml(option.label)}</option>`
@@ -1349,7 +1349,7 @@ function workspaceStatusPanel(product) {
         </label>
         <label>
           <span>Notes</span>
-          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Category checked, ready for next export" />
+          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Category checked before next export pack" />
         </label>
       </div>
       <p class="muted-copy" data-workspace-status-updated>${escapeHtml(updated)}</p>
@@ -1391,10 +1391,10 @@ function listingWorkbenchPanel() {
         <button class="secondary-button" data-copy-listing-field="title">Copy title</button>
         <button class="secondary-button" data-copy-listing-field="description">Copy description</button>
         <button class="secondary-button" data-copy-listing-field="tags">Copy tags</button>
-        <button class="secondary-button" data-copy-listing-field="pack">Copy full pack</button>
-        <button class="secondary-button" data-download-current-listing>Download current listing</button>
-        <button class="secondary-button" data-prepare-current-listing>Save prepared listing</button>
-        <button class="primary-button" data-mark-current-ready>Mark ready</button>
+        <button class="secondary-button" data-copy-listing-field="pack">Copy draft pack</button>
+        <button class="secondary-button" data-download-current-listing>Download draft file</button>
+        <button class="secondary-button" data-prepare-current-listing>Save prep record</button>
+        <button class="primary-button" data-mark-current-ready>Mark ready to export</button>
       </div>
     </div>
   `;
@@ -1423,7 +1423,7 @@ function bindListingWorkbenchControls(container, product) {
     saveWorkspaceStatus(product.id, {
       status: "ready"
     });
-    window.shopify?.toast?.show?.("Listing marked ready.");
+    window.shopify?.toast?.show?.("Marked ready to export.");
   });
 }
 
@@ -1514,7 +1514,7 @@ function downloadCurrentListing(product) {
   );
   void recordExport("single_listing_pack", [curatedProduct], filename);
   markProductsWorkspaceStatus([product], "exported");
-  window.shopify?.toast?.show?.("Current listing downloaded.");
+  window.shopify?.toast?.show?.("Draft file downloaded.");
 }
 
 function ebayDraftStatus(product) {
@@ -1561,7 +1561,7 @@ function imageCurationPanel(product) {
       <div class="image-curation-heading">
         <div>
           <h3>Export images</h3>
-          <p>Pick images included in browser exports. Shopify is not changed.</p>
+          <p>Pick images included in downloaded export packs.</p>
         </div>
         <span>${includedCount}/${entries.length} included</span>
       </div>
@@ -2132,11 +2132,11 @@ async function prepareSelectedListings() {
     await refreshActivity();
     window.shopify?.toast?.show?.(
       failed
-        ? `Prepared with ${failed} validation issue${failed === 1 ? "" : "s"}.`
-        : "Prepared listing records saved."
+        ? `Saved with ${failed} validation issue${failed === 1 ? "" : "s"}.`
+        : "Prep records saved."
     );
   } catch (error) {
-    window.shopify?.toast?.show?.(error.message || "Could not save prepared listings.");
+    window.shopify?.toast?.show?.(error.message || "Could not save prep records.");
   }
 }
 

@@ -132,7 +132,7 @@ export function assessEbayPrep(product) {
       ok: categoryHint.confidence !== "none",
       detail:
         categoryHint.confidence === "none"
-          ? "Needs seller category review before publishing"
+          ? "Needs seller category review before export or desktop publishing"
           : `${categoryHint.label} from Shopify title, type, tags, or description`
     },
     {
