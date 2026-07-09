@@ -1272,41 +1272,37 @@ function renderDraft() {
   subtitle.textContent = `${marketplaceLabel(state.marketplace)} draft for ${product.title}`;
   content.innerHTML = `
     <div class="draft-stack">
-      <section class="draft-overview-grid">
-        <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
-        <div class="draft-overview-details">
+      <section class="draft-layout">
+        <div class="draft-main-column">
+          <div class="draft-image">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : "<span>No image selected</span>"}</div>
+          <div class="draft-fields-card">
+            <label>
+              <span>Marketplace title</span>
+              <input type="text" data-draft-field="title" value="${escapeAttribute(draft.title)}" />
+            </label>
+            <label>
+              <span>Description</span>
+              <textarea rows="9" data-draft-field="description">${escapeHtml(draft.description)}</textarea>
+            </label>
+            <label>
+              <span>Suggested tags</span>
+              <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
+            </label>
+          </div>
+          <div class="checklist">
+            <h3>Readiness checks</h3>
+            ${readiness.checks.map(checkItem).join("")}
+          </div>
+        </div>
+        <div class="draft-side-column">
           ${workspaceStatusPanel(product)}
           ${imageCurationPanel(product)}
-        </div>
-      </section>
-      <section class="draft-editor-grid">
-        <div class="draft-fields-card">
-          <label>
-            <span>Marketplace title</span>
-            <input type="text" data-draft-field="title" value="${escapeAttribute(draft.title)}" />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea rows="9" data-draft-field="description">${escapeHtml(draft.description)}</textarea>
-          </label>
-          <label>
-            <span>Suggested tags</span>
-            <input type="text" data-draft-field="tags" value="${escapeAttribute(draft.tags.join(", "))}" />
-          </label>
-        </div>
-        <div class="draft-action-column">
           ${listingWorkbenchPanel()}
           ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
-        </div>
-      </section>
-      <section class="draft-validation-grid">
-        <div class="checklist">
-          <h3>Readiness checks</h3>
-          ${readiness.checks.map(checkItem).join("")}
-        </div>
-        <div class="variant-box">
-          <h3>Variants</h3>
-          ${variantList(product)}
+          <div class="variant-box">
+            <h3>Variants</h3>
+            ${variantList(product)}
+          </div>
         </div>
       </section>
     </div>
@@ -1338,7 +1334,7 @@ function workspaceStatusPanel(product) {
       <div class="workspace-status-heading">
         <div>
           <h3>${escapeHtml(marketplaceLabel(state.marketplace))} workspace status</h3>
-          <p>Track local listing progress for this marketplace. Shopify is not changed.</p>
+          <p>Local progress only. Shopify is not changed.</p>
         </div>
         <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
       </div>
@@ -1388,7 +1384,7 @@ function listingWorkbenchPanel() {
   return `
     <div class="listing-actions-card">
       <div class="listing-actions-heading">
-        <h3>Listing actions</h3>
+        <h3>Actions</h3>
         <span>${escapeHtml(marketplaceLabel(state.marketplace))}</span>
       </div>
       <div class="listing-action-grid">
@@ -1565,7 +1561,7 @@ function imageCurationPanel(product) {
       <div class="image-curation-heading">
         <div>
           <h3>Export images</h3>
-          <p>Choose the primary image and image URLs included in browser exports. Shopify is not changed.</p>
+          <p>Pick images included in browser exports. Shopify is not changed.</p>
         </div>
         <span>${includedCount}/${entries.length} included</span>
       </div>

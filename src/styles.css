@@ -699,37 +699,29 @@ button:focus-visible {
 
 .draft-stack {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 14px;
 }
 
-.draft-overview-grid,
-.draft-editor-grid {
+.draft-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.15fr);
   gap: 16px;
   align-items: start;
 }
 
-.draft-overview-details,
-.draft-action-column,
+.draft-main-column,
+.draft-side-column,
 .draft-fields-card {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-}
-
-.draft-validation-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
-  gap: 16px;
-  align-items: start;
 }
 
 .draft-fields-card {
   border: 1px solid #e1e3e5;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 6px;
+  padding: 12px;
   background: #ffffff;
 }
 
@@ -737,9 +729,11 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: clamp(240px, 24vw, 320px);
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  max-height: 310px;
   border: 1px solid #dcdfe4;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #f1f2f3;
   color: #6d7175;
   overflow: hidden;
@@ -747,22 +741,22 @@ button:focus-visible {
 
 .image-curation {
   border: 1px solid #e1e3e5;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 6px;
+  padding: 12px;
   background: #ffffff;
 }
 
 .workspace-status-card {
   border: 1px solid #e1e3e5;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 6px;
+  padding: 12px;
   background: #f8fbfa;
 }
 
 .listing-actions-card {
   border: 1px solid #e1e3e5;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 6px;
+  padding: 12px;
   background: #ffffff;
 }
 
@@ -771,7 +765,7 @@ button:focus-visible {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .listing-actions-heading h3 {
@@ -788,11 +782,18 @@ button:focus-visible {
 .listing-action-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .listing-action-grid button {
+  font-size: 13px;
+  min-height: 34px;
+  padding: 0 10px;
   width: 100%;
+}
+
+.listing-action-grid [data-mark-current-ready] {
+  grid-column: 1 / -1;
 }
 
 .workspace-status-heading {
@@ -800,7 +801,7 @@ button:focus-visible {
   justify-content: space-between;
   gap: 12px;
   align-items: start;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .workspace-status-heading h3 {
@@ -817,8 +818,8 @@ button:focus-visible {
 .workspace-status-controls {
   display: grid;
   grid-template-columns: minmax(120px, 0.55fr) minmax(180px, 1fr);
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .image-curation-heading {
@@ -826,7 +827,7 @@ button:focus-visible {
   justify-content: space-between;
   gap: 12px;
   align-items: start;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .image-curation-heading h3 {
@@ -852,7 +853,7 @@ button:focus-visible {
 }
 
 .image-choice-list.scrollable {
-  max-height: 300px;
+  max-height: 256px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -860,11 +861,11 @@ button:focus-visible {
 .image-choice {
   display: grid;
   grid-template-columns: 70px 48px minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   border: 1px solid #eff1f2;
   border-radius: 6px;
-  padding: 7px 8px;
+  padding: 6px 8px;
   background: #fbfbfc;
 }
 
@@ -928,8 +929,9 @@ button:focus-visible {
 .variant-box,
 .ebay-detail {
   border: 1px solid #e1e3e5;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
 }
 
 .ebay-detail {
@@ -1081,9 +1083,7 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .draft-overview-grid,
-  .draft-editor-grid,
-  .draft-validation-grid {
+  .draft-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1110,7 +1110,8 @@ button:focus-visible {
   }
 
   .draft-image {
-    height: 260px;
+    min-height: 220px;
+    max-height: none;
   }
 }
 
