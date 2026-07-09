@@ -17,7 +17,7 @@ const demoMode = import.meta.env.VITE_QST_DEMO_MODE !== "false";
 const LOCAL_WORKSPACE_VERSION = 1;
 const WORKSPACE_STATUS_OPTIONS = [
   { value: "not_started", label: "Not started", className: "neutral" },
-  { value: "drafted", label: "Draft saved", className: "demo" },
+  { value: "drafted", label: "Draft in progress", className: "demo" },
   { value: "ready", label: "Ready to export", className: "ok" },
   { value: "exported", label: "Export downloaded", className: "ok" }
 ];
@@ -250,9 +250,9 @@ function renderShell() {
           </select>
         </label>
         <label>
-          <span>Prep status</span>
+          <span>Progress</span>
           <select id="work-status-filter">
-            <option value="all">All prep</option>
+            <option value="all">All progress</option>
             ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
           </select>
         </label>
@@ -494,8 +494,8 @@ function renderActivityPanel() {
     <article>
       <span class="status-pill ${latestListing ? "ok" : "neutral"}">${escapeHtml(state.recentListings.length)}</span>
       <div>
-        <h2>Saved prep records</h2>
-        <p>${latestListing ? `${latestListing.productTitle} - ${latestListing.status}` : "No saved preparation records yet."}</p>
+        <h2>Saved draft records</h2>
+        <p>${latestListing ? `${latestListing.productTitle} - ${latestListing.status}` : "No saved draft records yet."}</p>
       </div>
     </article>
     <article>
@@ -584,7 +584,7 @@ function renderEbayWorkflow() {
       <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} export-ready` : ""}</span>
       ${webOAuthControls}
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select export-ready</button>
-      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save prep records</button>
+      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save draft records</button>
       <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review plan</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay CSV pack</button>
     </div>
@@ -664,9 +664,9 @@ function renderBulkPanel() {
     <div class="bulk-controls">
       <span class="batch-state">${escapeHtml(selectedText)}</span>
       <label>
-        <span>Prep status</span>
+        <span>Set progress</span>
         <select id="bulk-status">
-          <option value="">Keep prep status</option>
+          <option value="">Keep progress</option>
           ${WORKSPACE_STATUS_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("")}
         </select>
       </label>
@@ -1327,20 +1327,20 @@ function getDraft(product) {
 
 function workspaceStatusPanel(product) {
   const current = workspaceStatusFor(product.id);
-  const updated = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No local progress saved yet.";
+  const updated = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No QST progress saved yet.";
 
   return `
     <div class="workspace-status-card">
       <div class="workspace-status-heading">
         <div>
-          <h3>Export prep status</h3>
-          <p>QST tracking only. No marketplace listing is published.</p>
+          <h3>Product export progress</h3>
+          <p>Local QST progress for filtering products. It does not publish or edit marketplace listings.</p>
         </div>
         <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
       </div>
       <div class="workspace-status-controls">
         <label>
-          <span>Prep status</span>
+          <span>Stage</span>
           <select id="workspace-status-select">
             ${WORKSPACE_STATUS_OPTIONS.map(
               (option) => `<option value="${escapeAttribute(option.value)}" ${option.value === current.status ? "selected" : ""}>${escapeHtml(option.label)}</option>`
@@ -1348,8 +1348,8 @@ function workspaceStatusPanel(product) {
           </select>
         </label>
         <label>
-          <span>Notes</span>
-          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Category checked before next export pack" />
+          <span>Reminder note</span>
+          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Check category before export" />
         </label>
       </div>
       <p class="muted-copy" data-workspace-status-updated>${escapeHtml(updated)}</p>
@@ -1393,7 +1393,7 @@ function listingWorkbenchPanel() {
         <button class="secondary-button" data-copy-listing-field="tags">Copy tags</button>
         <button class="secondary-button" data-copy-listing-field="pack">Copy draft pack</button>
         <button class="secondary-button" data-download-current-listing>Download draft file</button>
-        <button class="secondary-button" data-prepare-current-listing>Save prep record</button>
+        <button class="secondary-button" data-prepare-current-listing>Save draft record</button>
         <button class="primary-button" data-mark-current-ready>Mark ready to export</button>
       </div>
     </div>
@@ -1768,7 +1768,7 @@ function refreshActiveWorkspaceStatusDom(productId) {
 
   const updated = document.querySelector("[data-workspace-status-updated]");
   if (updated) {
-    updated.textContent = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No local progress saved yet.";
+    updated.textContent = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No QST progress saved yet.";
   }
 }
 
@@ -2133,10 +2133,10 @@ async function prepareSelectedListings() {
     window.shopify?.toast?.show?.(
       failed
         ? `Saved with ${failed} validation issue${failed === 1 ? "" : "s"}.`
-        : "Prep records saved."
+        : "Draft records saved."
     );
   } catch (error) {
-    window.shopify?.toast?.show?.(error.message || "Could not save prep records.");
+    window.shopify?.toast?.show?.(error.message || "Could not save draft records.");
   }
 }
 

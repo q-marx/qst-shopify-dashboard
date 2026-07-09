@@ -632,7 +632,7 @@ button:focus-visible {
 
 .product-row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 94px 64px;
+  grid-template-columns: 32px minmax(0, 1fr) 140px 64px;
   gap: 10px;
   align-items: center;
   min-height: 82px;
@@ -690,7 +690,7 @@ button:focus-visible {
 
 .work-status-pill {
   justify-self: end;
-  min-width: 118px;
+  min-width: 132px;
   white-space: nowrap;
 }
 
