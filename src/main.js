@@ -198,12 +198,12 @@ function renderShell() {
     <main class="app-shell">
       <nav class="app-nav" aria-label="QST workspace sections">
         <a href="#overview">Overview</a>
-        <a href="#products">Products</a>
-        <a href="#listing-review">Listing review</a>
-        <a href="#marketplace-export">Export packs</a>
-        <a href="#exports">Exports</a>
+        <a href="#settings">Filters</a>
+        <a href="#listing-review">Products</a>
+        <a href="#exports">Downloads</a>
+        <a href="#marketplace-export">Export setup</a>
+        <a href="#activity-panel">Activity</a>
         <a href="#desktop-companion">Desktop companion</a>
-        <a href="#settings">Settings</a>
         <a href="#support">Support</a>
       </nav>
 
@@ -219,12 +219,6 @@ function renderShell() {
       </section>
 
       <section class="metrics-grid" id="metrics"></section>
-
-      <section class="account-grid" id="account-panel"></section>
-
-      <section class="activity-panel" id="activity-panel"></section>
-
-      <section class="workflow-panel" id="ebay-workflow"></section>
 
       <section class="toolbar" id="settings">
         <label class="search-field">
@@ -271,9 +265,6 @@ function renderShell() {
         <button class="secondary-button" id="refresh-button">Refresh</button>
       </section>
 
-      <div id="products"></div>
-      <section class="bulk-panel" id="bulk-panel"></section>
-
       <section class="workspace-grid" id="listing-review">
         <div class="panel product-panel">
           <div class="panel-heading">
@@ -297,6 +288,8 @@ function renderShell() {
         </aside>
       </section>
 
+      <section class="bulk-panel" id="bulk-panel"></section>
+
       <section class="export-bar" id="exports">
         <div>
           <strong id="selected-summary">No products selected</strong>
@@ -309,6 +302,12 @@ function renderShell() {
           <button class="primary-button" id="export-pack">Download listing pack</button>
         </div>
       </section>
+
+      <section class="workflow-panel" id="ebay-workflow"></section>
+
+      <section class="activity-panel" id="activity-panel"></section>
+
+      <section class="account-grid" id="account-panel"></section>
 
       <section class="support-strip" id="support">
         <div>
