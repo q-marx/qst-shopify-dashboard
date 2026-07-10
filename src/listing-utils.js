@@ -113,7 +113,7 @@ export function assessEbayPrep(product) {
     },
     {
       key: "variant_options",
-      label: "Variants",
+      label: "Listing rows",
       ok: variantOptionsReady,
       detail:
         variants.length <= 1
@@ -122,13 +122,13 @@ export function assessEbayPrep(product) {
     },
     {
       key: "variant_limit",
-      label: "Variant limit",
+      label: "Row limit",
       ok: variantsWithinLimit,
       detail: "eBay variation listings support up to 100 variants"
     },
     {
       key: "category",
-      label: "Category hint",
+      label: "Suggested category",
       ok: categoryHint.confidence !== "none",
       detail:
         categoryHint.confidence === "none"

@@ -457,7 +457,7 @@ function renderMetrics() {
     metric("Ready to export", ready),
     metric("Needs review", review),
     metric("Needs work", needsWork),
-    metric("Variants visible", variants),
+    metric("Listing rows", variants),
     metric(`${marketplaceLabel(state.marketplace)} exported`, exported)
   ].join("");
 }
@@ -567,7 +567,7 @@ function renderEbayWorkflow() {
         <strong>${escapeHtml(readyLabel)}</strong>
       </div>
       <div>
-        <span>Inventory rows</span>
+        <span>Listing rows</span>
         <strong>${escapeHtml(summary.inventoryRows)}</strong>
       </div>
       <div>
@@ -1299,7 +1299,7 @@ function renderDraft() {
           ${listingWorkbenchPanel()}
           ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
           <div class="variant-box">
-            <h3>Variants</h3>
+            <h3>Listing rows</h3>
             ${variantList(product)}
           </div>
         </div>
@@ -1520,18 +1520,18 @@ function ebayDraftStatus(product) {
   const prep = assessEbayPrep(product);
   const blockerText = prep.blockers.length
     ? prep.blockers.map((check) => check.label).join(", ")
-    : "Ready for export review";
+    : "Ready to download as an export pack.";
 
   return `
     <div class="ebay-detail">
       <div class="ebay-detail-heading">
-        <h3>Export pack readiness</h3>
+        <h3>Download readiness</h3>
         <span class="readiness-pill ${prep.state}">${prep.score}%</span>
       </div>
       <div class="ebay-facts">
-        <span>Category hint <strong>${escapeHtml(prep.categoryHint.label)}</strong></span>
-        <span>Image URLs <strong>${escapeHtml(prep.imageCount)}</strong></span>
-        <span>Inventory rows <strong>${escapeHtml(prep.inventoryRows)}</strong></span>
+        <span>Suggested category <strong>${escapeHtml(prep.categoryHint.label)}</strong></span>
+        <span>Images selected <strong>${escapeHtml(prep.imageCount)}</strong></span>
+        <span>Listing rows <strong>${escapeHtml(prep.inventoryRows)}</strong></span>
       </div>
       <p class="${prep.blockers.length ? "inline-error" : "muted-copy"}">${escapeHtml(blockerText)}</p>
     </div>
@@ -1786,23 +1786,34 @@ function checkItem(check) {
 function variantList(product) {
   const variants = product.variants ?? [];
   if (!variants.length) {
-    return `<p>No variants returned from Shopify.</p>`;
+    return `<p>No listing rows returned from Shopify.</p>`;
   }
 
   return variants
     .slice(0, 12)
     .map((variant) => {
-      const options = (variant.selectedOptions ?? [])
-        .map((option) => `${option.name}: ${option.value}`)
-        .join(", ");
+      const options = variantOptionSummary(variant);
+      const label = options || (variants.length === 1 ? "Single listing row" : variant.title || "Listing row");
+      const details = [variant.sku ? `SKU ${variant.sku}` : "", variant.price ? `Price ${variant.price}` : ""].filter(Boolean).join(" - ");
       return `
         <div class="variant-row">
-          <strong>${escapeHtml(options || variant.title || "Default")}</strong>
-          <span>${escapeHtml([variant.sku, variant.price ? `Price ${variant.price}` : ""].filter(Boolean).join(" - "))}</span>
+          <strong>${escapeHtml(label)}</strong>
+          <span>${escapeHtml(details)}</span>
         </div>
       `;
     })
     .join("");
+}
+
+function variantOptionSummary(variant) {
+  return (variant.selectedOptions ?? [])
+    .filter((option) => {
+      const name = String(option.name || "").trim().toLowerCase();
+      const value = String(option.value || "").trim().toLowerCase();
+      return value && value !== "default title" && name !== "title";
+    })
+    .map((option) => `${option.name}: ${option.value}`)
+    .join(", ");
 }
 
 function renderExportSummary() {
