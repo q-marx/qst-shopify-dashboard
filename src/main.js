@@ -657,9 +657,9 @@ function renderBulkPanel() {
 
   panel.innerHTML = `
     <div class="bulk-copy">
-      <p class="eyebrow">Bulk local prep</p>
-      <h2>Apply draft changes to selected products</h2>
-      <p>Use browser-only bulk edits for listing preparation. Shopify product data is not changed.</p>
+      <p class="eyebrow">Bulk draft updates</p>
+      <h2>Update selected product drafts</h2>
+      <p>Apply the same progress stage, title prefix, or tag to selected draft records. Store product data is not changed.</p>
     </div>
     <div class="bulk-controls">
       <span class="batch-state">${escapeHtml(selectedText)}</span>
@@ -679,7 +679,7 @@ function renderBulkPanel() {
         <input id="bulk-tag" type="text" placeholder="Example: ebay-ready" />
       </label>
       <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Select visible</button>
-      <button class="primary-button" id="bulk-apply" ${selected.length ? "" : "disabled"}>Apply bulk prep</button>
+      <button class="primary-button" id="bulk-apply" ${selected.length ? "" : "disabled"}>Apply changes</button>
     </div>
   `;
 
@@ -693,7 +693,7 @@ function renderBulkPanel() {
 function applyBulkLocalPrep() {
   const products = getSelectedProducts();
   if (!products.length) {
-    window.shopify?.toast?.show?.("Select products before applying bulk prep.");
+    window.shopify?.toast?.show?.("Select products before applying changes.");
     return;
   }
 
@@ -703,7 +703,7 @@ function applyBulkLocalPrep() {
   const hasDraftChange = Boolean(titlePrefix || tag);
 
   if (!status && !hasDraftChange) {
-    window.shopify?.toast?.show?.("Choose a status, title prefix, or tag first.");
+    window.shopify?.toast?.show?.("Choose a progress stage, title prefix, or tag first.");
     return;
   }
 
