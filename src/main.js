@@ -13,7 +13,8 @@ import {
 import { getShopifyIdToken, isEmbeddedShopifyContext, loadBillingStatus, loadProducts } from "./shopify-api.js";
 import "./styles.css";
 
-const demoMode = import.meta.env.VITE_QST_DEMO_MODE !== "false";
+const screenshotMode = new URLSearchParams(window.location.search).get("screenshot") === "1";
+const demoMode = screenshotMode || import.meta.env.VITE_QST_DEMO_MODE !== "false";
 const LOCAL_WORKSPACE_VERSION = 1;
 const WORKSPACE_STATUS_OPTIONS = [
   { value: "not_started", label: "Not started", className: "neutral" },
@@ -84,11 +85,14 @@ async function refreshProducts() {
   render();
 
   try {
-    const result = await loadProducts({ demoMode });
+    const result = await loadProducts({ demoMode, screenshotMode });
     state.products = result.products;
     state.source = result.source;
     state.selectedIds = new Set();
     restoreLocalWorkspaceState(result.products);
+    if (screenshotMode) {
+      seedScreenshotProgressState(result.products);
+    }
     state.activeProductId = state.products[0]?.id ?? null;
     applyFilters();
   } catch (error) {
@@ -116,7 +120,7 @@ async function refreshAccount() {
   }
 
   try {
-    state.billing = await loadBillingStatus({ demoMode });
+    state.billing = await loadBillingStatus({ demoMode, screenshotMode });
   } catch (error) {
     state.billingError = isEmbeddedShopifyContext()
       ? "Subscription status could not be checked in this preview."
@@ -424,21 +428,22 @@ function render() {
 
 function renderSourceCard() {
   const embedded = isEmbeddedShopifyContext();
-  const sourceLabel = embedded
+  const embeddedView = embedded || screenshotMode;
+  const sourceLabel = embeddedView
     ? "Shopify Admin"
     : demoMode
       ? state.source === "demo"
         ? "Demo data"
         : "Loading"
       : "Shopify Admin required";
-  const sourceDescription = embedded
+  const sourceDescription = embeddedView
     ? "Using App Bridge direct GraphQL access with read-only product scope."
     : demoMode
       ? "Previewing dashboard behavior with sample products."
       : "Open this app inside Shopify Admin to load store products securely.";
 
   document.querySelector("#source-card").innerHTML = `
-    <span class="status-pill ${embedded ? "ok" : "demo"}">${embedded ? "Embedded" : demoMode ? "Local preview" : "Direct view"}</span>
+    <span class="status-pill ${embeddedView ? "ok" : "demo"}">${embeddedView ? "Embedded" : demoMode ? "Local preview" : "Direct view"}</span>
     <h2>${sourceLabel}</h2>
     <p>${sourceDescription}</p>
   `;
@@ -1652,6 +1657,20 @@ function workspaceKey(productId, marketplace = state.marketplace) {
 
 function workspaceStatusFor(productId, marketplace = state.marketplace) {
   return normalizeWorkspaceStatus(state.workspaceStatusOverrides.get(workspaceKey(productId, marketplace)));
+}
+
+function seedScreenshotProgressState(products) {
+  state.workspaceStatusOverrides = new Map();
+  const updatedAt = "2026-07-09T13:08:00Z";
+
+  products.forEach((product, index) => {
+    const status = index < 41 ? "exported" : index < 46 ? "ready" : "drafted";
+    state.workspaceStatusOverrides.set(workspaceKey(product.id), {
+      status,
+      note: "",
+      updatedAt
+    });
+  });
 }
 
 function normalizeWorkspaceStatus(record = {}) {

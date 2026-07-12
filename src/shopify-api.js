@@ -1,4 +1,4 @@
-import { demoProducts } from "./demo-products.js";
+import { demoProducts, screenshotProducts } from "./demo-products.js";
 
 const PRODUCTS_QUERY = `
   query QstProducts($first: Int!, $after: String) {
@@ -63,8 +63,16 @@ const BILLING_QUERY = `
   }
 `;
 
-export async function loadProducts({ demoMode }) {
+export async function loadProducts({ demoMode, screenshotMode = false }) {
   if (!isEmbeddedShopifyContext()) {
+    if (screenshotMode) {
+      return {
+        source: "screenshot",
+        products: screenshotProducts,
+        pageInfo: { hasNextPage: false, endCursor: null }
+      };
+    }
+
     if (demoMode) {
       return {
         source: "demo",
@@ -107,16 +115,17 @@ export async function loadProducts({ demoMode }) {
   };
 }
 
-export async function loadBillingStatus({ demoMode }) {
+export async function loadBillingStatus({ demoMode, screenshotMode = false }) {
   if (!isEmbeddedShopifyContext()) {
+    const previewActive = demoMode || screenshotMode;
     return {
-      source: demoMode ? "demo" : "local",
-      active: demoMode,
-      subscriptions: demoMode
+      source: screenshotMode ? "screenshot" : demoMode ? "demo" : "local",
+      active: previewActive,
+      subscriptions: previewActive
         ? [
             {
-              id: "demo-subscription",
-              name: "Development preview",
+              id: screenshotMode ? "screenshot-subscription" : "demo-subscription",
+              name: screenshotMode ? "QST Full Access" : "Development preview",
               status: "ACTIVE",
               currentPeriodEnd: null,
               trialDays: 0
