@@ -1664,7 +1664,7 @@ function seedScreenshotProgressState(products) {
   const updatedAt = "2026-07-09T13:08:00Z";
 
   products.forEach((product, index) => {
-    const status = index < 41 ? "exported" : index < 46 ? "ready" : "drafted";
+    const status = index < 49 ? "exported" : "ready";
     state.workspaceStatusOverrides.set(workspaceKey(product.id), {
       status,
       note: "",
