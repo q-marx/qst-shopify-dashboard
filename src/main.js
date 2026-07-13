@@ -1471,20 +1471,20 @@ function getDraft(product) {
 
 function workspaceStatusPanel(product) {
   const current = workspaceStatusFor(product.id);
-  const updated = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No QST progress saved yet.";
+  const updated = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No private note saved yet.";
 
   return `
     <div class="workspace-status-card">
       <div class="workspace-status-heading">
         <div>
-          <h3>QST progress</h3>
-          <p>Track this product's preparation stage for filters and reminders. Shopify is not changed.</p>
+          <h3>Private preparation note</h3>
+          <p>Optional. Label this product for your own QST workflow. This only affects QST filters and reminders.</p>
         </div>
         <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
       </div>
       <div class="workspace-status-controls">
         <label>
-          <span>Stage</span>
+          <span>Progress label</span>
           <select id="workspace-status-select">
             ${WORKSPACE_STATUS_OPTIONS.map(
               (option) => `<option value="${escapeAttribute(option.value)}" ${option.value === current.status ? "selected" : ""}>${escapeHtml(option.label)}</option>`
@@ -1492,8 +1492,8 @@ function workspaceStatusPanel(product) {
           </select>
         </label>
         <label>
-          <span>Reminder note</span>
-          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Check category before export" />
+          <span>Private note</span>
+          <input id="workspace-status-note" type="text" value="${escapeAttribute(current.note)}" placeholder="Example: Check category before next export" />
         </label>
       </div>
       <p class="muted-copy" data-workspace-status-updated>${escapeHtml(updated)}</p>
@@ -1926,7 +1926,7 @@ function refreshActiveWorkspaceStatusDom(productId) {
 
   const updated = document.querySelector("[data-workspace-status-updated]");
   if (updated) {
-    updated.textContent = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No QST progress saved yet.";
+    updated.textContent = current.updatedAt ? `Updated ${formatDateTime(current.updatedAt)}` : "No private note saved yet.";
   }
 }
 
