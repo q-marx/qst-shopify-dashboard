@@ -208,22 +208,20 @@ export const screenshotProducts = Array.from({ length: 50 }, (_, index) => {
   const catalogItem = screenshotCatalog[index % screenshotCatalog.length];
   const number = String(index + 1).padStart(2, "0");
   const reviewProduct = index < 9;
-  const variantCount = index < 11 ? 2 : 1;
   const title =
     index < screenshotCatalog.length
       ? catalogItem.title
       : `${catalogItem.title} ${Math.floor(index / screenshotCatalog.length) + 1}`;
-  const variants = Array.from({ length: variantCount }, (_, variantIndex) => {
-    const option = variantCount > 1 ? (variantIndex === 0 ? "Standard" : "Gift boxed") : "";
-    return {
-      id: `screenshot-variant-${number}-${variantIndex + 1}`,
-      title: option || "Default Title",
-      sku: reviewProduct ? "" : `${catalogItem.skuPrefix}-${number}${variantCount > 1 ? `-${variantIndex + 1}` : ""}`,
+  const variants = [
+    {
+      id: `screenshot-variant-${number}-1`,
+      title: "Default Title",
+      sku: reviewProduct ? "" : `${catalogItem.skuPrefix}-${number}`,
       price: catalogItem.price,
-      inventoryQuantity: 6 + ((index + variantIndex) % 12),
-      selectedOptions: option ? [{ name: "Finish", value: option }] : []
-    };
-  });
+      inventoryQuantity: 6 + (index % 12),
+      selectedOptions: []
+    }
+  ];
 
   return {
     id: `screenshot-${number}`,

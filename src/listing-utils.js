@@ -118,11 +118,11 @@ export function assessEbayPrep(product) {
     },
     {
       key: "variant_options",
-      label: "Variant export rows",
+      label: "Export rows",
       ok: variantOptionsReady,
       detail:
         variants.length <= 1
-          ? "Single variant export row"
+          ? "Single export row"
           : "Each product variant becomes its own export row"
     },
     {

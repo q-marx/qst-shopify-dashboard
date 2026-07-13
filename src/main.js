@@ -240,7 +240,7 @@ function renderShell() {
           <strong>2</strong>
           <span>
             <b>Review draft</b>
-            <small>Check copy, images, variants, and readiness.</small>
+            <small>Check copy, images, export rows, and readiness.</small>
           </span>
         </a>
         <a href="#exports">
@@ -359,7 +359,7 @@ function renderShell() {
             <ol>
               <li>Confirm the Pack target in the filters row.</li>
               <li>Click the product row to open its Listing draft.</li>
-              <li>Review or edit the title, description, tags, readiness checks, images, and variant export rows.</li>
+              <li>Review or edit the title, description, tags, readiness checks, images, and export rows.</li>
               <li>Tick the checkbox at the far left of the product row.</li>
               <li>Choose Download listing pack in the Downloads section.</li>
             </ol>
@@ -560,7 +560,7 @@ function renderMetrics() {
     metric("Ready to export", ready),
     metric("Needs review", review),
     metric("Needs work", needsWork),
-    metric("Variant export rows", variants),
+    metric("Export rows", variants),
     metric(`${marketplaceLabel(state.marketplace)} exported`, exported)
   ].join("");
 }
@@ -649,7 +649,7 @@ function renderEbayWorkflow() {
       <p class="eyebrow" id="marketplace-export">eBay CSV export</p>
       <h2>Download eBay-compatible CSV packs</h2>
       <p>
-        QST turns selected products into an eBay-compatible CSV with copy, prices, export SKUs, image URLs, variant export rows, readiness notes, and category hints.
+        QST turns selected products into an eBay-compatible CSV with copy, prices, export SKUs, image URLs, export rows, readiness notes, and category hints.
       </p>
       <p class="workflow-note">
         No eBay account is needed to download CSV packs. Direct eBay publishing is only in QST Desktop after eBay is connected there.
@@ -662,7 +662,7 @@ function renderEbayWorkflow() {
         <strong>${escapeHtml(readyLabel)}</strong>
       </div>
       <div>
-        <span>Variant rows</span>
+        <span>Export rows</span>
         <strong>${escapeHtml(summary.inventoryRows)}</strong>
       </div>
       <div>
@@ -1444,7 +1444,7 @@ function renderDraft() {
           ${listingWorkbenchPanel()}
           ${state.marketplace === "ebay" ? ebayDraftStatus(curatedProduct) : ""}
           <div class="variant-box">
-            <h3>Variant export rows</h3>
+            <h3>Export rows</h3>
             ${variantList(product)}
           </div>
         </div>
@@ -1665,7 +1665,7 @@ function ebayDraftStatus(product) {
   const prep = assessEbayPrep(product);
   const blockerText = prep.blockers.length
     ? prep.blockers.map((check) => check.label).join(", ")
-    : `Ready to download as an export pack. ${prep.inventoryRows} row${prep.inventoryRows === 1 ? "" : "s"} will be included because each variant becomes its own export row.`;
+    : `Ready to download as an export pack. ${prep.inventoryRows} export row${prep.inventoryRows === 1 ? "" : "s"} will be included. Products with variants use one row per variant.`;
 
   return `
     <div class="ebay-detail">
@@ -1676,7 +1676,7 @@ function ebayDraftStatus(product) {
       <div class="ebay-facts">
         <span>Suggested category <strong>${escapeHtml(prep.categoryHint.label)}</strong></span>
         <span>Images selected <strong>${escapeHtml(prep.imageCount)}</strong></span>
-        <span>Variant export rows <strong>${escapeHtml(prep.inventoryRows)}</strong></span>
+        <span>Export rows <strong>${escapeHtml(prep.inventoryRows)}</strong></span>
       </div>
       <p class="${prep.blockers.length ? "inline-error" : "muted-copy"}">${escapeHtml(blockerText)}</p>
     </div>
@@ -1945,14 +1945,14 @@ function checkItem(check) {
 function variantList(product) {
   const variants = product.variants ?? [];
   if (!variants.length) {
-    return `<p>No variant rows returned from Shopify.</p>`;
+    return `<p>No export rows returned from Shopify.</p>`;
   }
 
   return variants
     .slice(0, 12)
     .map((variant, index) => {
       const options = variantOptionSummary(variant);
-      const label = options || (variants.length === 1 ? "Single variant row" : variant.title || "Variant row");
+      const label = options || (variants.length === 1 ? "Single export row" : variant.title || "Export row");
       const shopifySku = String(variant.sku || "").trim();
       const rowSku = exportSku(product, variant, index);
       const details = [
