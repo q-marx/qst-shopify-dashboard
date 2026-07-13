@@ -215,6 +215,7 @@ function renderShell() {
         <a href="#marketplace-export">Export setup</a>
         <a href="#activity-panel">Activity</a>
         <a href="#desktop-companion">Desktop companion</a>
+        <a href="#how-to-use">How to use</a>
         <a href="#support">Support</a>
       </nav>
 
@@ -321,10 +322,69 @@ function renderShell() {
 
       <section class="account-grid" id="account-panel"></section>
 
+      <section class="how-to-section" id="how-to-use">
+        <div class="how-to-heading">
+          <p class="eyebrow">How to use</p>
+          <h2>Guides for common QST workflows</h2>
+          <p>Follow these short guides inside Shopify Admin. QST prepares local drafts and exports; it does not edit your Shopify catalogue.</p>
+        </div>
+        <div class="guide-list">
+          <details class="guide-item" open>
+            <summary>
+              <span>Create a listing pack from one product</span>
+              <small>Review one product and download a copy-ready text pack.</small>
+            </summary>
+            <ol>
+              <li>Confirm the Pack target in the filters row.</li>
+              <li>Click the product row to open its Listing draft.</li>
+              <li>Review or edit the title, description, tags, readiness checks, images, and listing rows.</li>
+              <li>Tick the checkbox at the far left of the product row.</li>
+              <li>Choose Download listing pack in the Downloads section.</li>
+            </ol>
+          </details>
+          <details class="guide-item">
+            <summary>
+              <span>Export selected products as CSV</span>
+              <small>Create a spreadsheet-style pack from selected products.</small>
+            </summary>
+            <ol>
+              <li>Use search and filters to narrow the product list.</li>
+              <li>Tick each product you want to include, or use Select export-ready.</li>
+              <li>Review the selected-products summary.</li>
+              <li>Choose Download CSV in the Downloads section.</li>
+            </ol>
+          </details>
+          <details class="guide-item">
+            <summary>
+              <span>Create an eBay CSV pack</span>
+              <small>Use the eBay export preparation section for marketplace review.</small>
+            </summary>
+            <ol>
+              <li>Keep Pack target set to eBay.</li>
+              <li>Select export-ready products or tick products manually.</li>
+              <li>Add optional export setup notes for policies, dispatch, or fallback category review.</li>
+              <li>Choose Download eBay CSV pack.</li>
+            </ol>
+          </details>
+          <details class="guide-item">
+            <summary>
+              <span>Pair QST Desktop</span>
+              <small>Connect the optional Windows companion for advanced local workflows.</small>
+            </summary>
+            <ol>
+              <li>Open Desktop companion.</li>
+              <li>Download and install QST Desktop if needed.</li>
+              <li>Generate a pairing code in Shopify Admin.</li>
+              <li>Enter the code in QST Desktop's Shopify pairing screen before it expires.</li>
+            </ol>
+          </details>
+        </div>
+      </section>
+
       <section class="support-strip" id="support">
         <div>
           <strong>QST reads Shopify product information to prepare listings. It does not change your Shopify catalogue.</strong>
-          <span>Prepare drafts, save records, and download export packs inside Shopify Admin. QST Desktop is optional for advanced local workflows.</span>
+          <span>Need help? Include your Shopify store domain, the product you were preparing, and any visible error message.</span>
         </div>
         <div class="support-links" aria-label="Support links">
           <a href="mailto:qst.support@q-mer.ch">Support</a>

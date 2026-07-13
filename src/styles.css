@@ -71,6 +71,7 @@ button {
 #listing-review,
 #exports,
 #desktop-companion,
+#how-to-use,
 #support {
   scroll-margin-top: 72px;
 }
@@ -90,6 +91,7 @@ button {
 .bulk-panel,
 .workflow-panel,
 .activity-panel,
+.how-to-section,
 .support-strip,
 .account-card,
 .metric-card,
@@ -1037,6 +1039,61 @@ button:focus-visible {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.how-to-section {
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.how-to-heading {
+  max-width: 780px;
+}
+
+.how-to-heading p:not(.eyebrow) {
+  margin-bottom: 0;
+  color: #5c5f62;
+  line-height: 1.45;
+}
+
+.guide-list {
+  margin-top: 14px;
+  border-top: 1px solid #e1e3e5;
+}
+
+.guide-item {
+  border-bottom: 1px solid #e1e3e5;
+  padding: 12px 0;
+}
+
+.guide-item summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.guide-item summary span {
+  color: #202223;
+  font-weight: 700;
+}
+
+.guide-item summary small {
+  color: #6d7175;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.guide-item ol {
+  margin: 10px 0 0 22px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.guide-item li + li {
+  margin-top: 4px;
 }
 
 .support-strip {
