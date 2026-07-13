@@ -88,6 +88,7 @@ button {
 .panel,
 .export-bar,
 .toolbar,
+.quick-start,
 .bulk-panel,
 .workflow-panel,
 .activity-panel,
@@ -155,6 +156,59 @@ h3 {
 .source-card p {
   margin-bottom: 0;
   color: #5c5f62;
+}
+
+.quick-start {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.quick-start a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 14px 16px;
+  color: #202223;
+  text-decoration: none;
+}
+
+.quick-start a + a {
+  border-left: 1px solid #e1e3e5;
+}
+
+.quick-start a:hover,
+.quick-start a:focus-visible {
+  background: #f7fbf9;
+}
+
+.quick-start strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #005c44;
+  background: #d1fae5;
+  font-size: 13px;
+}
+
+.quick-start b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 14px;
+}
+
+.quick-start small {
+  display: block;
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .status-pill,
@@ -472,6 +526,10 @@ button:disabled,
   align-items: end;
   padding: 16px;
   margin-bottom: 16px;
+}
+
+.bulk-panel[hidden] {
+  display: none;
 }
 
 .bulk-copy h2 {
@@ -972,9 +1030,19 @@ button:focus-visible {
 }
 
 .empty-state {
+  display: grid;
+  gap: 6px;
   padding: 32px;
   color: #6d7175;
   text-align: center;
+}
+
+.empty-state strong {
+  color: #202223;
+}
+
+.empty-state span {
+  display: block;
 }
 
 .error-state {
@@ -1098,11 +1166,17 @@ button:focus-visible {
 
 @media (max-width: 1120px) {
   .hero-band,
+  .quick-start,
   .workspace-grid,
   .toolbar,
   .bulk-panel,
   .workflow-panel {
     grid-template-columns: 1fr;
+  }
+
+  .quick-start a + a {
+    border-top: 1px solid #e1e3e5;
+    border-left: 0;
   }
 
   .draft-layout {

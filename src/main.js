@@ -209,12 +209,11 @@ function renderShell() {
     <main class="app-shell">
       <nav class="app-nav" aria-label="QST workspace sections">
         <a href="#overview">Overview</a>
-        <a href="#settings">Filters</a>
         <a href="#listing-review">Products</a>
         <a href="#exports">Downloads</a>
-        <a href="#marketplace-export">Export setup</a>
-        <a href="#activity-panel">Activity</a>
-        <a href="#desktop-companion">Desktop companion</a>
+        <a href="#marketplace-export">eBay CSV</a>
+        <a href="#desktop-companion">Desktop</a>
+        <a href="#guides">Guides</a>
         <a href="#support">Support</a>
       </nav>
 
@@ -227,6 +226,30 @@ function renderShell() {
           </p>
         </div>
         <div class="source-card" id="source-card"></div>
+      </section>
+
+      <section class="quick-start" aria-label="Main QST workflow">
+        <a href="#listing-review">
+          <strong>1</strong>
+          <span>
+            <b>Select products</b>
+            <small>Use filters, row checkboxes, or Select export-ready.</small>
+          </span>
+        </a>
+        <a href="#listing-review">
+          <strong>2</strong>
+          <span>
+            <b>Review draft</b>
+            <small>Check copy, images, rows, and readiness.</small>
+          </span>
+        </a>
+        <a href="#exports">
+          <strong>3</strong>
+          <span>
+            <b>Download pack</b>
+            <small>Export text, CSV, or workspace files.</small>
+          </span>
+        </a>
       </section>
 
       <section class="metrics-grid" id="metrics"></section>
@@ -305,13 +328,13 @@ function renderShell() {
       <section class="export-bar" id="exports">
         <div>
           <strong id="selected-summary">No products selected</strong>
-          <p>Exports are generated from read-only Shopify data. Local draft and image edits are saved in this browser.</p>
+          <p id="selected-helper">Select products with the row checkboxes, then download a pack. Shopify is not changed.</p>
         </div>
         <div class="export-actions">
-          <button class="text-button" id="clear-local-workspace">Clear local edits</button>
-          <button class="secondary-button" id="export-csv">Download CSV</button>
-          <button class="secondary-button" id="export-workspace-pack">Download workspace pack</button>
-          <button class="primary-button" id="export-pack">Download listing pack</button>
+          <button class="text-button" id="clear-local-workspace" hidden>Reset local changes</button>
+          <button class="secondary-button" id="export-csv" disabled>Download CSV</button>
+          <button class="secondary-button" id="export-workspace-pack" disabled>Download workspace pack</button>
+          <button class="primary-button" id="export-pack" disabled>Download listing pack</button>
         </div>
       </section>
 
@@ -361,7 +384,7 @@ function renderShell() {
             <ol>
               <li>Keep Pack target set to eBay.</li>
               <li>Select export-ready products or tick products manually.</li>
-              <li>Open Optional eBay notes only if you want category, policy, or dispatch context included in a review file.</li>
+              <li>Open Optional eBay notes only if you want category, policy, or dispatch context included in the review file.</li>
               <li>Choose Download eBay CSV pack.</li>
             </ol>
           </details>
@@ -443,6 +466,9 @@ function bindControls() {
     render();
   });
   document.querySelector("#clear-local-workspace").addEventListener("click", () => {
+    if (!window.confirm("Reset local draft changes, image selections, and progress notes? Shopify is not changed.")) {
+      return;
+    }
     clearLocalWorkspaceState();
   });
   document.querySelector("#export-csv").addEventListener("click", () => {
@@ -603,7 +629,9 @@ function renderEbayWorkflow() {
   const selected = getSelectedProducts().map(applyImageCuration);
   const selectedSummary = buildEbayPrepSummary(selected);
   const readyLabel = summary.total ? `${summary.ready}/${summary.total}` : "0/0";
-  const selectedLabel = selected.length ? `${selected.length} selected` : "No batch selected";
+  const selectedLabel = selected.length
+    ? `${selected.length} selected`
+    : "No products selected. eBay downloads use export-ready products shown.";
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
   const webEbayOAuth = webEbayOAuthEnabled();
   const ebayConnected = Boolean(state.ebayConnection?.connected);
@@ -618,13 +646,13 @@ function renderEbayWorkflow() {
 
   panel.innerHTML = `
     <div class="workflow-copy">
-      <p class="eyebrow" id="marketplace-export">Marketplace export preparation</p>
-      <h2>Prepare export-ready listing packs from Shopify products</h2>
+      <p class="eyebrow" id="marketplace-export">eBay CSV export</p>
+      <h2>Download eBay-compatible CSV packs</h2>
       <p>
-        QST turns selected Shopify products into draft records and export packs with copy, prices, export SKUs, images, variant rows, readiness notes, and category search hints.
+        QST turns selected products into an eBay-compatible CSV with copy, prices, export SKUs, image URLs, variant rows, readiness notes, and category hints.
       </p>
       <p class="workflow-note">
-        The Shopify app creates review packs and eBay-compatible CSV exports. Direct eBay publishing remains available in QST Desktop after the merchant connects eBay there.
+        No eBay account is needed to download CSV packs. Direct eBay publishing is only in QST Desktop after eBay is connected there.
       </p>
       ${webEbayOAuth && state.ebayConnectionError ? `<p class="inline-error">${escapeHtml(state.ebayConnectionError)}</p>` : ""}
     </div>
@@ -642,7 +670,7 @@ function renderEbayWorkflow() {
         <strong>${escapeHtml(summary.categoryReview)}</strong>
       </div>
       <div>
-        <span>QST SKU rows</span>
+        <span>Export SKU rows</span>
         <strong>${escapeHtml(summary.autoSkuRows)}</strong>
       </div>
     </div>
@@ -650,8 +678,8 @@ function renderEbayWorkflow() {
       <span class="batch-state">${escapeHtml(selectedLabel)}${selected.length ? `, ${selectedSummary.ready} export-ready` : ""}</span>
       ${webOAuthControls}
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select export-ready</button>
-      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save draft records</button>
-      <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review plan</button>
+      <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save review records</button>
+      <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review file</button>
       <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay CSV pack</button>
     </div>
     <details class="workflow-notes" ${notesOpen ? "open" : ""}>
@@ -659,7 +687,7 @@ function renderEbayWorkflow() {
         <span>Optional eBay notes</span>
         <small>Only for extra review context. Skip this for a normal listing pack or CSV export.</small>
       </summary>
-      <p>Use these fields to include category, policy, dispatch, or seller notes in a downloaded review file. These notes do not make products ready, change Shopify, connect eBay, or publish anything.</p>
+      <p>Use these fields to include category, policy, dispatch, or seller notes in the downloaded review file. These notes do not make products ready, change Shopify, connect eBay, or publish anything.</p>
       <div class="notes-fields">
         <label>
           <span>Category note</span>
@@ -693,16 +721,21 @@ function renderBulkPanel() {
   }
 
   const selected = getSelectedProducts();
+  if (!selected.length) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+
+  panel.hidden = false;
   const visibleCount = state.filteredProducts.length;
-  const selectedText = selected.length
-    ? `${selected.length} selected for ${marketplaceLabel(state.marketplace)}`
-    : "No products selected";
+  const selectedText = `${selected.length} selected for ${marketplaceLabel(state.marketplace)}`;
 
   panel.innerHTML = `
     <div class="bulk-copy">
-      <p class="eyebrow">Bulk draft updates</p>
-      <h2>Update selected product drafts</h2>
-      <p>Apply the same progress stage, title prefix, or tag to selected draft records. Store product data is not changed.</p>
+      <p class="eyebrow">Selected products</p>
+      <h2>Apply changes to selected drafts</h2>
+      <p>Use this when selected products need the same progress stage, title prefix, or tag. Store product data is not changed.</p>
     </div>
     <div class="bulk-controls">
       <span class="batch-state">${escapeHtml(selectedText)}</span>
@@ -721,8 +754,8 @@ function renderBulkPanel() {
         <span>Append tag</span>
         <input id="bulk-tag" type="text" placeholder="Example: ebay-ready" />
       </label>
-      <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Select all shown</button>
-      <button class="primary-button" id="bulk-apply" ${selected.length ? "" : "disabled"}>Apply changes</button>
+      <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Add all shown</button>
+      <button class="primary-button" id="bulk-apply">Apply changes</button>
     </div>
   `;
 
@@ -1287,7 +1320,7 @@ function renderProducts() {
   const list = document.querySelector("#product-list");
   document.querySelector("#product-count").textContent = state.loading
     ? "Loading Shopify products..."
-    : `${state.filteredProducts.length} of ${state.products.length} products shown.`;
+    : `${state.filteredProducts.length} of ${state.products.length} shown. Click a row to review; tick boxes to download.`;
 
   if (state.error) {
     list.innerHTML = `<div class="empty-state error-state">${escapeHtml(state.error)}</div>`;
@@ -1367,7 +1400,12 @@ function renderDraft() {
 
   if (!product) {
     subtitle.textContent = "Select a product to review.";
-    content.innerHTML = `<div class="empty-state">Choose a product to see listing copy, checks, variants, and export details.</div>`;
+    content.innerHTML = `
+      <div class="empty-state">
+        <strong>Choose a product row to review its draft.</strong>
+        <span>Then tick the product checkbox and download a listing pack.</span>
+      </div>
+    `;
     return;
   }
 
@@ -1439,8 +1477,8 @@ function workspaceStatusPanel(product) {
     <div class="workspace-status-card">
       <div class="workspace-status-heading">
         <div>
-          <h3>Product export progress</h3>
-          <p>Local QST progress for filtering products. It does not publish or edit marketplace listings.</p>
+          <h3>QST progress</h3>
+          <p>Track this product's preparation stage for filters and reminders. Shopify is not changed.</p>
         </div>
         <span class="status-pill ${current.className}" data-workspace-status-pill>${escapeHtml(current.label)}</span>
       </div>
@@ -1490,16 +1528,16 @@ function listingWorkbenchPanel() {
   return `
     <div class="listing-actions-card">
       <div class="listing-actions-heading">
-        <h3>Actions</h3>
+        <h3>This draft</h3>
         <span>${escapeHtml(marketplaceLabel(state.marketplace))}</span>
       </div>
       <div class="listing-action-grid">
         <button class="secondary-button" data-copy-listing-field="title">Copy title</button>
         <button class="secondary-button" data-copy-listing-field="description">Copy description</button>
         <button class="secondary-button" data-copy-listing-field="tags">Copy tags</button>
-        <button class="secondary-button" data-copy-listing-field="pack">Copy draft pack</button>
-        <button class="secondary-button" data-download-current-listing>Download draft file</button>
-        <button class="secondary-button" data-prepare-current-listing>Save draft record</button>
+        <button class="secondary-button" data-copy-listing-field="pack">Copy full draft</button>
+        <button class="secondary-button" data-download-current-listing>Download this draft</button>
+        <button class="secondary-button" data-prepare-current-listing>Save review record</button>
         <button class="primary-button" data-mark-current-ready>Mark ready to export</button>
       </div>
     </div>
@@ -1947,9 +1985,31 @@ function variantOptionSummary(variant) {
 
 function renderExportSummary() {
   const selected = getSelectedProducts();
+  const hasSelected = selected.length > 0;
   document.querySelector("#selected-summary").textContent = selected.length
     ? `${selected.length} product${selected.length === 1 ? "" : "s"} selected for ${marketplaceLabel(state.marketplace)}`
     : "No products selected";
+  document.querySelector("#selected-helper").textContent = hasSelected
+    ? "Download the selected products as copy-ready text, CSV, or a QST workspace file. Shopify is not changed."
+    : "Select products with the row checkboxes, Select all shown, or Select export-ready.";
+  ["#export-csv", "#export-workspace-pack", "#export-pack"].forEach((selector) => {
+    const button = document.querySelector(selector);
+    if (button) {
+      button.disabled = !hasSelected;
+    }
+  });
+  const resetButton = document.querySelector("#clear-local-workspace");
+  if (resetButton) {
+    resetButton.hidden = !hasLocalWorkspaceChanges();
+  }
+}
+
+function hasLocalWorkspaceChanges() {
+  return Boolean(
+    state.draftOverrides.size ||
+    state.imageOverrides.size ||
+    state.workspaceStatusOverrides.size
+  );
 }
 
 function getSelectedProducts() {
@@ -2317,7 +2377,7 @@ function downloadEbayReviewPlan() {
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
   const ebaySetup = state.ebaySettings?.settings || defaultEbaySettingsPayload().settings;
-  const filename = `qst-ebay-review-plan-${date}.json`;
+  const filename = `qst-ebay-review-file-${date}.json`;
   download(
     filename,
     buildEbayReviewPlan(products, ebaySetup, draftOverrides),
@@ -2325,7 +2385,7 @@ function downloadEbayReviewPlan() {
   );
   void recordExport("ebay_review_plan", products, filename);
   markProductsWorkspaceStatus(products, "ready");
-  window.shopify?.toast?.show?.("Review plan generated.");
+  window.shopify?.toast?.show?.("Review file downloaded.");
 }
 
 function exportSelected(type) {
