@@ -118,12 +118,12 @@ export function assessEbayPrep(product) {
     },
     {
       key: "variant_options",
-      label: "Listing rows",
+      label: "Variant export rows",
       ok: variantOptionsReady,
       detail:
         variants.length <= 1
-          ? "Single listing row"
-          : "Variant option values can be mapped into eBay rows"
+          ? "Single variant export row"
+          : "Each product variant becomes its own export row"
     },
     {
       key: "variant_limit",
