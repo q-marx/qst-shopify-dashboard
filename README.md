@@ -6,7 +6,7 @@ This is the embedded Shopify Admin surface for QST. It is intentionally useful w
 - uses read-only `read_products` scope
 - lets merchants search, filter, select, review, and edit listing drafts in memory
 - saves prepared listing records per Shopify shop with validation results
-- prepares marketplace export packs with draft copy, prices, SKUs, image URLs, variants, readiness notes, and category search hints
+- prepares marketplace export packs with draft copy, prices, Shopify SKUs or QST-generated export SKUs, image URLs, variants, readiness notes, and category search hints
 - includes export setup notes for seller policies, dispatch location, and fallback category readiness
 - exports an eBay-compatible review-plan JSON file without connecting to or publishing on eBay
 - exports a QST workspace pack with listing text, marketplace draft data, promo-page HTML, variant rows, and an image URL manifest

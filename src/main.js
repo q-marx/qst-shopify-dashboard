@@ -8,6 +8,7 @@ import {
   buildTextPack,
   buildWorkspacePack,
   createDraft,
+  exportSku,
   marketplaceLabel
 } from "./listing-utils.js";
 import { getShopifyIdToken, isEmbeddedShopifyContext, loadBillingStatus, loadProducts } from "./shopify-api.js";
@@ -570,7 +571,7 @@ function renderEbayWorkflow() {
       <p class="eyebrow" id="marketplace-export">Marketplace export preparation</p>
       <h2>Prepare export-ready listing packs from Shopify products</h2>
       <p>
-        QST turns selected Shopify products into draft records and export packs with copy, prices, SKUs, images, variant rows, readiness notes, and category search hints.
+        QST turns selected Shopify products into draft records and export packs with copy, prices, export SKUs, images, variant rows, readiness notes, and category search hints.
       </p>
       <p class="workflow-note">
         The Shopify app creates review packs and eBay-compatible CSV exports. Direct eBay publishing remains available in QST Desktop after the merchant connects eBay there.
@@ -591,7 +592,7 @@ function renderEbayWorkflow() {
         <strong>${escapeHtml(summary.categoryReview)}</strong>
       </div>
       <div>
-        <span>Auto SKU rows</span>
+        <span>QST SKU rows</span>
         <strong>${escapeHtml(summary.autoSkuRows)}</strong>
       </div>
     </div>
@@ -1323,6 +1324,13 @@ function productRow(product) {
   const active = product.id === state.activeProductId;
   const checked = state.selectedIds.has(product.id);
   const firstVariant = product.variants?.[0] ?? {};
+  const firstShopifySku = String(firstVariant.sku || "").trim();
+  const firstExportSku = exportSku(product, firstVariant, 0);
+  const productMeta = [
+    product.productType,
+    firstShopifySku ? `SKU ${firstShopifySku}` : firstExportSku ? `Export SKU ${firstExportSku}` : "",
+    product.status
+  ].filter(Boolean).join(" - ");
 
   return `
     <article class="product-row ${active ? "active" : ""}">
@@ -1331,7 +1339,7 @@ function productRow(product) {
         <span class="thumb">${curatedProduct.imageUrl ? `<img src="${escapeHtml(curatedProduct.imageUrl)}" alt="" />` : ""}</span>
         <span class="product-copy">
           <strong>${escapeHtml(product.title)}</strong>
-          <small>${escapeHtml([product.productType, firstVariant.sku, product.status].filter(Boolean).join(" - "))}</small>
+          <small>${escapeHtml(productMeta)}</small>
         </span>
       </button>
       <span class="work-status-pill ${workspaceStatus.className}">${escapeHtml(workspaceStatus.label)}</span>
@@ -1892,10 +1900,18 @@ function variantList(product) {
 
   return variants
     .slice(0, 12)
-    .map((variant) => {
+    .map((variant, index) => {
       const options = variantOptionSummary(variant);
       const label = options || (variants.length === 1 ? "Single listing row" : variant.title || "Listing row");
-      const details = [variant.sku ? `SKU ${variant.sku}` : "", variant.price ? `Price ${variant.price}` : ""].filter(Boolean).join(" - ");
+      const shopifySku = String(variant.sku || "").trim();
+      const rowSku = exportSku(product, variant, index);
+      const details = [
+        rowSku ? `Export SKU ${rowSku}` : "",
+        shopifySku ? "" : "QST generated",
+        variant.price ? `Price ${variant.price}` : ""
+      ]
+        .filter(Boolean)
+        .join(" - ");
       return `
         <div class="variant-row">
           <strong>${escapeHtml(label)}</strong>

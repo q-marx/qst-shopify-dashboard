@@ -43,6 +43,8 @@ export function createDraft(product, marketplace = "ebay") {
   const title = smartTrim(product.title, titleLimit);
   const tags = collectTags(product);
   const variantText = summarizeVariants(product);
+  const variants = product.variants?.length ? product.variants : [{}];
+  const firstVariant = variants[0] ?? {};
   const description = [
     product.description || `${product.title} prepared from Shopify product data.`,
     variantText ? `\nOptions available:\n${variantText}` : "",
@@ -58,8 +60,8 @@ export function createDraft(product, marketplace = "ebay") {
     title,
     description,
     tags,
-    price: product.variants?.[0]?.price ?? "",
-    sku: product.variants?.[0]?.sku ?? "",
+    price: firstVariant.price ?? "",
+    sku: exportSku(product, firstVariant, 0),
     imageUrl: product.imageUrl ?? ""
   };
 }
@@ -77,6 +79,7 @@ export function assessEbayPrep(product) {
   const variantsWithinLimit = variants.length <= 100;
   const hasPublishablePrice = variants.some((variant) => parsePrice(variant.price) >= 0.99);
   const hasShopifySku = variants.some((variant) => String(variant.sku || "").trim());
+  const missingShopifySkuCount = variants.filter((variant) => !String(variant.sku || "").trim()).length;
 
   const checks = [
     {
@@ -105,11 +108,13 @@ export function assessEbayPrep(product) {
     },
     {
       key: "sku",
-      label: "SKU source",
+      label: "Export SKU source",
       ok: true,
-      detail: hasShopifySku
+      detail: missingShopifySkuCount && hasShopifySku
+        ? `Uses Shopify SKUs where present and QST_ export SKUs for ${missingShopifySkuCount} row${missingShopifySkuCount === 1 ? "" : "s"}`
+        : hasShopifySku
         ? "Uses Shopify SKUs where available"
-        : "QST can generate SHOPIFY_ reference SKUs for export tracking"
+        : "QST generates QST_ export SKUs for tracking; Shopify is not changed"
     },
     {
       key: "variant_options",
@@ -161,6 +166,10 @@ export function assessEbayPrep(product) {
 }
 
 export function assessReadiness(product) {
+  const variants = product.variants?.length ? product.variants : [{}];
+  const missingShopifySkuCount = variants.filter((variant) => !String(variant.sku || "").trim()).length;
+  const exportSkuReady = variants.every((variant, index) => Boolean(exportSku(product, variant, index)));
+
   const checks = [
     {
       key: "title",
@@ -188,9 +197,11 @@ export function assessReadiness(product) {
     },
     {
       key: "sku",
-      label: "SKU",
-      ok: Boolean(product.variants?.some((variant) => String(variant.sku || "").trim())),
-      detail: "A SKU is available for tracking"
+      label: "Export SKU",
+      ok: exportSkuReady,
+      detail: missingShopifySkuCount
+        ? `${missingShopifySkuCount} listing row${missingShopifySkuCount === 1 ? "" : "s"} will use QST-generated export SKUs`
+        : "Shopify SKUs are available for export tracking"
     },
     {
       key: "status",
@@ -293,7 +304,7 @@ export function buildEbayPrepCsv(products, draftOverrides = {}) {
         draft.title,
         draft.description,
         variant.price || draft.price || "",
-        variant.sku || generatedSku(product, variant, index),
+        exportSku(product, variant, index),
         normalizedQuantity(variant.inventoryQuantity),
         variantOptionsText(variant),
         imageUrls.join(" | "),
@@ -389,7 +400,7 @@ export function buildTextPack(products, marketplace = "ebay", draftOverrides = {
         `Handle: ${product.handle || "-"}`,
         `Readiness: ${readiness.passed}/${readiness.total} checks`,
         `Price: ${draft.price || "-"}`,
-        `SKU: ${draft.sku || "-"}`,
+        `Export SKU: ${draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-"}`,
         "",
         "Description:",
         draft.description,
@@ -442,7 +453,7 @@ export function buildCsv(products, marketplace = "ebay", draftOverrides = {}) {
       draft.description,
       draft.tags.join(", "),
       draft.price,
-      draft.sku,
+      draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0),
       draft.imageUrl,
       String(readiness.score)
     ]);
@@ -462,6 +473,10 @@ export function marketplaceLabel(value) {
       gumtree: "Gumtree"
     }[value] ?? value
   );
+}
+
+export function exportSku(product, variant = {}, index = 0) {
+  return String(variant.sku || "").trim() || generatedSku(product, variant, index);
 }
 
 export function ebayCategoryHint(product) {
@@ -559,13 +574,13 @@ function workspacePackProduct(product, marketplace, draftOverride, index) {
       description: draft.description,
       tags: draft.tags,
       price: draft.price || "",
-      sku: draft.sku || ""
+      sku: draft.sku || exportSku(product, variants[0] ?? {}, 0)
     },
     variants: variants.map((variant, variantIndex) => ({
       index: variantIndex + 1,
       shopifyVariantId: variant.id || "",
       title: variant.title || "",
-      sku: variant.sku || generatedSku(product, variant, variantIndex),
+      sku: exportSku(product, variant, variantIndex),
       price: variant.price || "",
       quantity: normalizedQuantity(variant.inventoryQuantity),
       options: variantOptionsText(variant)
@@ -613,7 +628,7 @@ function buildPromoPageHtml(product, draft, imageManifest, marketplace) {
     `<p class="meta">${escapeHtmlText(marketplaceLabel(marketplace))} draft from Shopify product data</p>`,
     `<h1>${title}</h1>`,
     `<p>${description.replace(/\n/g, "<br>")}</p>`,
-    `<p class="meta">Price: ${escapeHtmlText(draft.price || "-")} | SKU: ${escapeHtmlText(draft.sku || "-")}</p>`,
+    `<p class="meta">Price: ${escapeHtmlText(draft.price || "-")} | Export SKU: ${escapeHtmlText(draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-")}</p>`,
     "</div>",
     `<div class="media">${imageMarkup}</div>`,
     "</section>",
@@ -654,7 +669,7 @@ function ebayPublishPlanProduct(product, setup, draftOverride) {
       sellerFallbackConfirmed: Boolean(setup.defaultCategoryReady)
     },
     inventoryItems: variants.map((variant, index) => {
-      const sku = variant.sku || generatedSku(product, variant, index);
+      const sku = exportSku(product, variant, index);
       return {
         sku,
         shopifyVariantId: variant.id || "",
@@ -710,7 +725,7 @@ function ebayReviewPlanProduct(product, setup, draftOverride) {
       title: draft.title,
       description: draft.description,
       price: draft.price || "",
-      sku: draft.sku || "",
+      sku: draft.sku || exportSku(product, variants[0] ?? {}, 0),
       tags: Array.isArray(draft.tags) ? draft.tags : collectTags(product),
       primaryImageUrl: draft.imageUrl || product.imageUrl || imageUrls[0] || ""
     },
@@ -726,7 +741,7 @@ function ebayReviewPlanProduct(product, setup, draftOverride) {
     },
     images: imageUrls,
     exportRows: variants.map((variant, index) => ({
-      sku: variant.sku || generatedSku(product, variant, index),
+      sku: exportSku(product, variant, index),
       shopifyVariantId: variant.id || "",
       title: draft.title,
       price: variant.price || draft.price || "",
@@ -782,7 +797,7 @@ function usableOptionValue(value) {
 function generatedSku(product, variant, index) {
   const productToken = skuToken(shopifyIdTail(product.id) || product.handle || product.title || "PRODUCT");
   const variantToken = skuToken(shopifyIdTail(variant.id) || variant.title || String(index + 1));
-  return variantsAreMeaningful(product) ? `SHOPIFY_${productToken}_${variantToken}`.slice(0, 50) : `SHOPIFY_${productToken}`.slice(0, 50);
+  return variantsAreMeaningful(product) ? `QST_${productToken}_${variantToken}`.slice(0, 50) : `QST_${productToken}`.slice(0, 50);
 }
 
 function variantsAreMeaningful(product) {
