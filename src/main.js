@@ -110,13 +110,19 @@ async function refreshAccount() {
   state.billingError = "";
   renderAccountPanel();
 
-  try {
-    state.account = await backendRequest(`/api/account${accountContextQuery()}`);
-  } catch (error) {
-    state.accountError = error.message || "Could not load account status.";
-  } finally {
+  if (screenshotMode && !isEmbeddedShopifyContext()) {
+    state.account = screenshotAccountPayload();
     state.accountLoading = false;
     renderAccountPanel();
+  } else {
+    try {
+      state.account = await backendRequest(`/api/account${accountContextQuery()}`);
+    } catch (error) {
+      state.accountError = error.message || "Could not load account status.";
+    } finally {
+      state.accountLoading = false;
+      renderAccountPanel();
+    }
   }
 
   try {
@@ -132,7 +138,7 @@ async function refreshAccount() {
 }
 
 async function refreshEbaySettings() {
-  if (!isEmbeddedShopifyContext() && !demoMode) {
+  if (!isEmbeddedShopifyContext() && (!demoMode || screenshotMode)) {
     state.ebaySettings = defaultEbaySettingsPayload();
     return;
   }
@@ -152,7 +158,7 @@ async function refreshEbaySettings() {
 }
 
 async function refreshEbayConnection() {
-  if (!isEmbeddedShopifyContext() && !demoMode) {
+  if (!isEmbeddedShopifyContext() && (!demoMode || screenshotMode)) {
     state.ebayConnection = null;
     return;
   }
@@ -172,7 +178,7 @@ async function refreshEbayConnection() {
 }
 
 async function refreshActivity() {
-  if (!isEmbeddedShopifyContext() && !demoMode) {
+  if (!isEmbeddedShopifyContext() && (!demoMode || screenshotMode)) {
     state.recentListings = [];
     state.recentExports = [];
     return;
@@ -265,7 +271,8 @@ function renderShell() {
             <option value="gumtree">Gumtree</option>
           </select>
         </label>
-        <button class="secondary-button" id="select-ready">Select ready</button>
+        <button class="secondary-button" id="select-visible">Select all shown</button>
+        <button class="secondary-button" id="select-ready">Select export-ready</button>
         <button class="secondary-button" id="refresh-button">Refresh</button>
       </section>
 
@@ -355,6 +362,10 @@ function bindControls() {
   document.querySelector("#marketplace-select").addEventListener("change", (event) => {
     state.marketplace = event.target.value;
     applyFilters();
+    render();
+  });
+  document.querySelector("#select-visible").addEventListener("click", () => {
+    state.selectedIds = new Set(state.filteredProducts.map((product) => product.id));
     render();
   });
   document.querySelector("#select-ready").addEventListener("click", () => {
@@ -682,7 +693,7 @@ function renderBulkPanel() {
         <span>Append tag</span>
         <input id="bulk-tag" type="text" placeholder="Example: ebay-ready" />
       </label>
-      <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Select visible</button>
+      <button class="secondary-button" id="bulk-select-visible" ${visibleCount ? "" : "disabled"}>Select all shown</button>
       <button class="primary-button" id="bulk-apply" ${selected.length ? "" : "disabled"}>Apply changes</button>
     </div>
   `;
@@ -815,6 +826,11 @@ async function saveEbaySetupFromPanel() {
     settings,
     summary: setupSummaryFromSettings(settings)
   };
+  if (!isEmbeddedShopifyContext()) {
+    renderEbayWorkflow();
+    return;
+  }
+
   state.ebaySettingsSaving = true;
   state.ebaySettingsError = "";
   renderEbayWorkflow();
@@ -853,6 +869,48 @@ function defaultEbaySettingsPayload() {
     marketplace: "ebay",
     settings,
     summary: setupSummaryFromSettings(settings)
+  };
+}
+
+function screenshotAccountPayload() {
+  const appHandle = import.meta.env.VITE_QST_SHOPIFY_APP_HANDLE || "qst-listing-workspace";
+
+  return {
+    appName: "QST Listing Workspace",
+    appHandle,
+    mode: "screenshot",
+    authentication: {
+      authenticated: true,
+      reason: "screenshot_preview",
+      shop: "sst-test-site.myshopify.com",
+      shopifySessionStored: true,
+      shopifyReauthorizeUrl: ""
+    },
+    subscription: {
+      provider: "shopify_app_pricing",
+      status: "active",
+      planName: "QST Full Access",
+      pricingPath: `/charges/${appHandle}/pricing_plans`,
+      pricingUrl: "",
+      managedBy: "Shopify"
+    },
+    desktop: {
+      optional: true,
+      platform: "Windows",
+      version: "1.0",
+      available: true,
+      downloadUrl: "/api/desktop/download",
+      pairingEnabled: true,
+      pairingTtlMinutes: 15
+    },
+    marketplaces: {
+      ebay: {
+        dashboardMode: "export_preparation",
+        webOauthEnabled: false,
+        hostedPublishingConfigured: false,
+        desktopPublishingOptional: true
+      }
+    }
   };
 }
 
@@ -1014,6 +1072,16 @@ async function generatePairingCode() {
   state.pairingError = "";
   renderAccountPanel();
 
+  if (screenshotMode && !isEmbeddedShopifyContext()) {
+    state.pairing = {
+      code: "QSTX-1042",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+    };
+    state.pairingLoading = false;
+    renderAccountPanel();
+    return;
+  }
+
   try {
     state.pairing = await backendRequest("/api/desktop/pairing-code", {
       method: "POST",
@@ -1148,6 +1216,8 @@ async function backendRequest(path, options = {}) {
   const token = await getShopifyIdToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  } else if (isEmbeddedShopifyContext()) {
+    throw new Error(shopifyAdminSessionMessage());
   }
 
   const response = await fetch(path, {
@@ -1157,10 +1227,22 @@ async function backendRequest(path, options = {}) {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(payload.error || `Request failed with ${response.status}.`);
+    throw new Error(friendlyBackendError(payload.error || `Request failed with ${response.status}.`));
   }
 
   return payload;
+}
+
+function friendlyBackendError(message) {
+  const text = String(message || "");
+  if (/app bridge id token|shopify.*id token|session token|bearer token/i.test(text)) {
+    return shopifyAdminSessionMessage();
+  }
+  return text;
+}
+
+function shopifyAdminSessionMessage() {
+  return "Open QST inside Shopify Admin, then refresh the page and try again. QST needs the secure Shopify Admin session before it can save workspace data.";
 }
 
 function formatDate(value) {
