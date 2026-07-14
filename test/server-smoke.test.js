@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
+import fsp from "node:fs/promises";
 import { after, before, test } from "node:test";
 
 const port = 5197;
@@ -58,6 +59,14 @@ test("health and readiness expose liveness separately from production storage re
 test("authenticated API routes reject missing Shopify session tokens", async () => {
   const response = await fetch(`${baseUrl}/api/ebay/connection`);
   assert.equal(response.status, 401);
+});
+
+test("direct production visits cannot expose local screenshot or subscription fixtures", async () => {
+  const response = await fetch(`${baseUrl}/?screenshot=1`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Open QST in Shopify Admin/);
+  assert.doesNotMatch(html, /app-bridge\.js|QST Full Access|screenshot-01/);
 });
 
 test("shop context comes from the verified session token, not spoofable request body data", async () => {
@@ -182,6 +191,106 @@ test("OAuth callbacks reject missing or reused state", async () => {
   assert.equal(response.status, 400);
 });
 
+test("privacy webhooks reject invalid HMAC signatures", async () => {
+  const response = await sendShopifyWebhook({
+    path: "/webhooks/shop/redact",
+    topic: "shop/redact",
+    shop: "invalid-signature-shop.myshopify.com",
+    secret: "wrong-secret"
+  });
+  assert.equal(response.status, 401);
+});
+
+test("customer privacy webhooks do not retain customer identifiers", async () => {
+  const customerId = "987654321012345";
+  const response = await sendShopifyWebhook({
+    path: "/webhooks/customers/redact",
+    topic: "customers/redact",
+    shop: "customer-redact-shop.myshopify.com",
+    payload: {
+      shop_id: 456,
+      shop_domain: "customer-redact-shop.myshopify.com",
+      customer: { id: customerId }
+    }
+  });
+  assert.equal(response.status, 200);
+
+  const eventLog = await fsp.readFile(new URL("../data/events.jsonl", import.meta.url), "utf8").catch(() => "");
+  assert.doesNotMatch(eventLog, new RegExp(customerId));
+});
+
+test("shop redact permanently removes every shop-scoped workspace record", async () => {
+  const shop = "redact-shop.myshopify.com";
+  const token = sessionToken(shop);
+
+  const listing = await postJson(
+    "/api/listings/prepare",
+    {
+      marketplace: "ebay",
+      products: [{
+        product: {
+          id: "gid://shopify/Product/redact",
+          title: "Redaction test product",
+          status: "ACTIVE",
+          imageUrl: "https://example.test/redact.jpg",
+          variants: [{ id: "gid://shopify/ProductVariant/redact", price: "14.00", sku: "REDACT-1" }]
+        },
+        draft: {
+          title: "Redaction test product",
+          price: "14.00",
+          imageUrl: "https://example.test/redact.jpg"
+        },
+        checks: []
+      }]
+    },
+    token
+  );
+  assert.equal(listing.status, 201);
+
+  const exported = await postJson(
+    "/api/exports/record",
+    {
+      marketplace: "ebay",
+      exportType: "ebay_preparation_csv",
+      productCount: 1,
+      productIds: ["gid://shopify/Product/redact"],
+      filename: "redact.csv"
+    },
+    token
+  );
+  assert.equal(exported.status, 201);
+
+  const pairing = await postJson("/api/desktop/pairing-code", {}, token);
+  assert.equal(pairing.status, 201);
+
+  const savedSettings = await fetch(`${baseUrl}/api/marketplace-settings/ebay`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ notes: "This must be deleted." })
+  });
+  assert.equal(savedSettings.status, 200);
+
+  const redacted = await sendShopifyWebhook({
+    path: "/webhooks/shop/redact",
+    topic: "shop/redact",
+    shop
+  });
+  assert.equal(redacted.status, 200);
+
+  const recentListings = await getJson("/api/listings/recent", token);
+  const recentExports = await getJson("/api/exports/recent", token);
+  const settings = await getJson("/api/marketplace-settings/ebay", token);
+  assert.deepEqual(recentListings.listings, []);
+  assert.deepEqual(recentExports.exports, []);
+  assert.equal(settings.settings.notes, "");
+
+  const oldPairing = await postJson(`/api/desktop/pairing/${encodeURIComponent(pairing.body.code)}/redeem`, {});
+  assert.equal(oldPairing.status, 404);
+});
+
 async function waitForHealth() {
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
@@ -241,6 +350,22 @@ function sessionToken(shop) {
     .update(`${header}.${payload}`)
     .digest("base64url");
   return `${header}.${payload}.${signature}`;
+}
+
+function sendShopifyWebhook({ path, topic, shop, secret = apiSecret, payload = null }) {
+  const body = JSON.stringify(payload || { shop_id: 123, shop_domain: shop });
+  const hmac = crypto.createHmac("sha256", secret).update(body).digest("base64");
+  return fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Topic": topic,
+      "X-Shopify-Shop-Domain": shop,
+      "X-Shopify-Hmac-Sha256": hmac,
+      "X-Shopify-Webhook-Id": `test-${topic}`
+    },
+    body
+  });
 }
 
 function base64UrlJson(value) {

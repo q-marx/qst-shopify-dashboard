@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  assessEbayPrep,
   assessReadiness,
   buildEbayPrepCsv,
   buildTextPack,
@@ -31,14 +32,14 @@ const productWithoutSku = {
   ]
 };
 
-test("missing Shopify SKUs use QST export SKUs without blocking readiness", () => {
+test("missing Shopify SKUs use QST export identifiers without blocking readiness", () => {
   const readiness = assessReadiness(productWithoutSku);
   const skuCheck = readiness.checks.find((check) => check.key === "sku");
 
   assert.equal(readiness.score, 100);
   assert.equal(skuCheck.ok, true);
-  assert.equal(skuCheck.label, "Export SKU");
-  assert.match(skuCheck.detail, /QST-generated export SKUs/);
+  assert.equal(skuCheck.label, "Export identifier");
+  assert.match(skuCheck.detail, /QST-generated export identifiers/);
 });
 
 test("drafts and exports include generated QST SKUs for read-only Shopify products", () => {
@@ -53,5 +54,27 @@ test("drafts and exports include generated QST SKUs for read-only Shopify produc
   assert.doesNotMatch(csv, /SHOPIFY_/);
 
   const textPack = buildTextPack([productWithoutSku], "ebay");
-  assert.match(textPack, new RegExp(`Export SKU: ${expectedSku}`));
+  assert.match(textPack, new RegExp(`Export identifier: ${expectedSku}`));
+});
+
+test("critical eBay preparation failures cannot be marked export-ready", () => {
+  const missingPrice = {
+    ...productWithoutSku,
+    variants: productWithoutSku.variants.map((variant) => ({ ...variant, price: "" }))
+  };
+  const prep = assessEbayPrep(missingPrice);
+
+  assert.equal(prep.score, 89);
+  assert.equal(prep.state, "review");
+  assert.deepEqual(prep.hardBlockers.map((check) => check.key), ["price"]);
+});
+
+test("CSV cells neutralize spreadsheet formulas from Shopify content", () => {
+  const formulaProduct = {
+    ...productWithoutSku,
+    title: "=HYPERLINK(\"https://example.test\",\"Open\")"
+  };
+  const csv = buildEbayPrepCsv([formulaProduct]);
+
+  assert.match(csv, /"'=HYPERLINK\(""https:\/\/example\.test"",""Open""\)"/);
 });

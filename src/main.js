@@ -14,8 +14,9 @@ import {
 import { getShopifyIdToken, isEmbeddedShopifyContext, loadBillingStatus, loadProducts } from "./shopify-api.js";
 import "./styles.css";
 
-const screenshotMode = new URLSearchParams(window.location.search).get("screenshot") === "1";
-const demoMode = screenshotMode || import.meta.env.VITE_QST_DEMO_MODE !== "false";
+const localPreviewAllowed = import.meta.env.DEV;
+const screenshotMode = localPreviewAllowed && new URLSearchParams(window.location.search).get("screenshot") === "1";
+const demoMode = localPreviewAllowed && (screenshotMode || import.meta.env.VITE_QST_DEMO_MODE !== "false");
 const LOCAL_WORKSPACE_VERSION = 1;
 const WORKSPACE_STATUS_OPTIONS = [
   { value: "not_started", label: "Not started", className: "neutral" },
@@ -211,7 +212,7 @@ function renderShell() {
         <a href="#overview">Overview</a>
         <a href="#listing-review">Products</a>
         <a href="#exports">Downloads</a>
-        <a href="#marketplace-export">eBay CSV</a>
+        <a href="#marketplace-export">eBay Prep</a>
         <a href="#desktop-companion">Desktop</a>
         <a href="#guides">Guides</a>
         <a href="#support">Support</a>
@@ -378,14 +379,14 @@ function renderShell() {
           </details>
           <details class="guide-item">
             <summary>
-              <span>Create an eBay CSV pack</span>
+              <span>Create an eBay preparation pack</span>
               <small>Use the eBay export preparation section for marketplace review.</small>
             </summary>
             <ol>
               <li>Keep Pack target set to eBay.</li>
               <li>Select export-ready products or tick products manually.</li>
               <li>Open Optional eBay notes only if you want category, policy, or dispatch context included in the review file.</li>
-              <li>Choose Download eBay CSV pack.</li>
+              <li>Choose Download preparation CSV.</li>
             </ol>
           </details>
           <details class="guide-item">
@@ -522,6 +523,10 @@ function render() {
   renderProducts();
   renderDraft();
   renderExportSummary();
+  const clearSelectionButton = document.querySelector("#clear-selection");
+  if (clearSelectionButton) {
+    clearSelectionButton.hidden = state.selectedIds.size === 0;
+  }
 }
 
 function renderSourceCard() {
@@ -646,10 +651,10 @@ function renderEbayWorkflow() {
 
   panel.innerHTML = `
     <div class="workflow-copy">
-      <p class="eyebrow" id="marketplace-export">eBay CSV export</p>
-      <h2>Download eBay-compatible CSV packs</h2>
+      <p class="eyebrow" id="marketplace-export">eBay preparation export</p>
+      <h2>Download eBay preparation CSV packs</h2>
       <p>
-        QST turns selected products into an eBay-compatible CSV with copy, prices, export SKUs, image URLs, export rows, readiness notes, and category hints.
+        QST turns selected products into a preparation CSV with copy, prices, export identifiers, image URLs, export rows, readiness notes, and category hints. Adapt it to an official eBay Seller Hub template before upload.
       </p>
       <p class="workflow-note">
         No eBay account is needed to download CSV packs. Direct eBay publishing is only in QST Desktop after eBay is connected there.
@@ -670,7 +675,7 @@ function renderEbayWorkflow() {
         <strong>${escapeHtml(summary.categoryReview)}</strong>
       </div>
       <div>
-        <span>Export SKU rows</span>
+        <span>Generated ID rows</span>
         <strong>${escapeHtml(summary.autoSkuRows)}</strong>
       </div>
     </div>
@@ -680,7 +685,7 @@ function renderEbayWorkflow() {
       <button class="secondary-button" id="select-ebay-ready" ${summary.ready ? "" : "disabled"}>Select export-ready</button>
       <button class="secondary-button" id="prepare-ebay-listings" ${selected.length ? "" : "disabled"}>Save review records</button>
       <button class="secondary-button" id="download-ebay-plan" ${summary.ready || selected.length ? "" : "disabled"}>Download review file</button>
-      <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download eBay CSV pack</button>
+      <button class="primary-button" id="download-ebay-batch" ${summary.ready || selected.length ? "" : "disabled"}>Download preparation CSV</button>
     </div>
     <details class="workflow-notes" ${notesOpen ? "open" : ""}>
       <summary>
@@ -1373,7 +1378,7 @@ function productRow(product) {
   const firstExportSku = exportSku(product, firstVariant, 0);
   const productMeta = [
     product.productType,
-    firstShopifySku ? `SKU ${firstShopifySku}` : firstExportSku ? `Export SKU ${firstExportSku}` : "",
+    firstShopifySku ? `SKU ${firstShopifySku}` : firstExportSku ? `Generated export ID ${firstExportSku}` : "",
     product.status
   ].filter(Boolean).join(" - ");
 
@@ -1956,7 +1961,7 @@ function variantList(product) {
       const shopifySku = String(variant.sku || "").trim();
       const rowSku = exportSku(product, variant, index);
       const details = [
-        rowSku ? `Export SKU ${rowSku}` : "",
+        rowSku ? `${variant.sku ? "SKU" : "Generated export ID"} ${rowSku}` : "",
         shopifySku ? "" : "QST generated",
         variant.price ? `Price ${variant.price}` : ""
       ]
@@ -2354,11 +2359,11 @@ function downloadEbayBatch() {
 
   const date = new Date().toISOString().slice(0, 10);
   const draftOverrides = getDraftOverridesForExport(products);
-  const filename = `qst-ebay-ready-batch-${date}.csv`;
+  const filename = `qst-ebay-preparation-${date}.csv`;
   download(filename, buildEbayPrepCsv(products, draftOverrides), "text/csv;charset=utf-8");
-  void recordExport("ebay_batch_csv", products, filename);
+  void recordExport("ebay_preparation_csv", products, filename);
   markProductsWorkspaceStatus(products, "exported");
-  window.shopify?.toast?.show?.("eBay CSV pack generated.");
+  window.shopify?.toast?.show?.("eBay preparation CSV generated.");
 }
 
 function downloadEbayReviewPlan() {

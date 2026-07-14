@@ -762,6 +762,9 @@ button:focus-visible {
   background: #f1f2f3;
   color: #6d7175;
   overflow: hidden;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
 }
 
 .image-curation {
@@ -1227,6 +1230,11 @@ button:focus-visible {
 
   h1 {
     font-size: 24px;
+  }
+
+  .draft-image {
+    min-height: 0;
+    max-width: 100%;
   }
 
   .metrics-grid {

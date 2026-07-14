@@ -430,7 +430,7 @@ app.get("/api/products", async (request, response) => {
   }
 
   try {
-    const first = Math.min(Math.max(Number(request.query.first || 50), 1), 100);
+    const first = Math.min(Math.max(Number(request.query.first || 25), 1), 25);
     const result = await fetchShopifyProducts(context.shop, {
       first,
       after: safeString(request.query.after)
@@ -634,7 +634,7 @@ app.post(["/api/desktop/shopify/graphql", "/desktop/shopify/graphql"], async (re
 
   const query = safeString(request.body?.query);
   const variables = request.body?.variables && typeof request.body.variables === "object" ? request.body.variables : {};
-  const apiVersion = safeString(request.body?.api_version || request.body?.apiVersion || "2026-04");
+  const apiVersion = safeString(request.body?.api_version || request.body?.apiVersion || "2026-07");
 
   if (!query) {
     response.status(400).json({ error: "GraphQL query is required." });
@@ -682,13 +682,22 @@ app.get("/desktop/pairing/:code", (request, response) => {
 });
 
 app.get(["/listing-grader", "/listing-rescue"], (_request, response) => {
-  response.status(404).type("text").send("Not found.");
+  response.redirect(302, "/#listing-review");
 });
 
 app.get("/", (request, response, next) => {
   const shop = normalizeShopDomain(request.query.shop);
-  if (isProduction && shop && !request.query.host) {
-    response.redirect(302, shopifyAdminAppUrl(shop));
+  if (isProduction && !request.query.host) {
+    if (shop) {
+      response.redirect(302, shopifyAdminAppUrl(shop));
+      return;
+    }
+    response.type("html").send(
+      authResultHtml(
+        "Open QST in Shopify Admin",
+        "QST Listing Workspace runs inside Shopify Admin. Open Apps in your Shopify store and choose QST Listing Workspace."
+      )
+    );
     return;
   }
 
@@ -749,7 +758,11 @@ const SHOPIFY_PRODUCTS_QUERY = `
             altText
           }
         }
-        variants(first: 20) {
+        variants(first: 10) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes {
             id
             title
@@ -793,7 +806,36 @@ const SHOPIFY_PRODUCT_DETAIL_QUERY = `
           altText
         }
       }
-      variants(first: 100) {
+      variants(first: 250) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          title
+          sku
+          price
+          compareAtPrice
+          inventoryQuantity
+          selectedOptions {
+            name
+            value
+          }
+        }
+      }
+    }
+  }
+`;
+
+const SHOPIFY_PRODUCT_VARIANTS_QUERY = `
+  query QstProductVariants($id: ID!, $after: String) {
+    product(id: $id) {
+      variants(first: 250, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         nodes {
           id
           title
@@ -959,10 +1001,14 @@ async function fetchShopifyProducts(shop, variables) {
   }
 
   const payload = await shopifyGraphql(shop, session.accessToken, SHOPIFY_PRODUCTS_QUERY, variables);
+  const products = payload.data?.products?.nodes || [];
+  for (const product of products) {
+    await loadRemainingShopifyVariants(shop, session.accessToken, product);
+  }
   return {
     shop,
     source: "shopify_admin_graphql",
-    products: (payload.data?.products?.nodes || []).map(mapShopifyProduct),
+    products: products.map(mapShopifyProduct),
     pageInfo: payload.data?.products?.pageInfo || { hasNextPage: false, endCursor: null }
   };
 }
@@ -982,6 +1028,7 @@ async function fetchShopifyProduct(shop, id) {
     throw error;
   }
 
+  await loadRemainingShopifyVariants(shop, session.accessToken, payload.data.product);
   return {
     shop,
     source: "shopify_admin_graphql",
@@ -989,8 +1036,43 @@ async function fetchShopifyProduct(shop, id) {
   };
 }
 
-async function shopifyGraphql(shop, accessToken, query, variables, apiVersion = "2026-04") {
-  const version = /^20\d{2}-(01|04|07|10)$/.test(apiVersion) ? apiVersion : "2026-04";
+async function loadRemainingShopifyVariants(shop, accessToken, product) {
+  const variants = product?.variants;
+  if (!variants?.pageInfo?.hasNextPage) {
+    return;
+  }
+
+  let after = variants.pageInfo.endCursor;
+  while (after) {
+    const payload = await shopifyGraphql(
+      shop,
+      accessToken,
+      SHOPIFY_PRODUCT_VARIANTS_QUERY,
+      { id: product.id, after }
+    );
+    const page = payload.data?.product?.variants;
+    if (!page) {
+      throw new Error("Shopify returned an incomplete variant page.");
+    }
+
+    variants.nodes.push(...(page.nodes || []));
+    if (!page.pageInfo?.hasNextPage) {
+      variants.pageInfo = { hasNextPage: false, endCursor: null };
+      return;
+    }
+
+    const nextCursor = page.pageInfo.endCursor;
+    if (!nextCursor || nextCursor === after) {
+      throw new Error("Shopify variant pagination did not provide a new cursor.");
+    }
+    after = nextCursor;
+  }
+
+  throw new Error("Shopify variant pagination ended without a final page.");
+}
+
+async function shopifyGraphql(shop, accessToken, query, variables, apiVersion = "2026-07") {
+  const version = /^20\d{2}-(01|04|07|10)$/.test(apiVersion) ? apiVersion : "2026-07";
   const response = await fetch(`https://${shop}/admin/api/${version}/graphql.json`, {
     method: "POST",
     headers: {
@@ -1053,18 +1135,20 @@ async function handleWebhook(request, response) {
   const topic = safeString(request.get("x-shopify-topic")) || topicFromPath(request.path);
   const shop = safeString(request.get("x-shopify-shop-domain"));
   const webhookId = safeString(request.get("x-shopify-webhook-id"));
+  const customerId = customerIdFromWebhookPayload(request.body);
 
   await recordEvent("shopify_webhook", {
     topic,
     shop,
     webhookId,
     apiVersion: safeString(request.get("x-shopify-api-version")),
-    payload: summarizeWebhookPayload(request.body)
+    payload: summarizeWebhookPayload(request.body, topic)
   });
 
-  if (topic === "app/uninstalled") {
-    await clearPairingRecords(shop);
+  if (topic === "app/uninstalled" || topic === "shop/redact") {
     await clearShopData(shop);
+  } else if (topic === "customers/redact") {
+    await clearCustomerWebhookData(shop, customerId);
   }
 
   response.status(200).json({ ok: true });
@@ -1286,20 +1370,119 @@ async function getShopifySession(shop) {
 async function clearShopData(shop) {
   const normalizedShop = normalizeShopDomain(shop);
   if (!normalizedShop) {
-    return;
+    throw new Error("Shopify privacy webhook did not include a valid shop domain.");
   }
 
   if (!dbReady) {
     shopifySessions.delete(normalizedShop);
     ebayConnections.delete(normalizedShop);
-    marketplaceSettings.delete(marketplaceSettingsKey(normalizedShop, "ebay"));
+    for (const [key] of marketplaceSettings.entries()) {
+      if (key.endsWith(`:${normalizedShop}`)) {
+        marketplaceSettings.delete(key);
+      }
+    }
+    for (const [key, record] of oauthStates.entries()) {
+      if (record.shop === normalizedShop) {
+        oauthStates.delete(key);
+      }
+    }
+    for (const [key, record] of desktopEbayOAuthRequests.entries()) {
+      if (record.shop === normalizedShop) {
+        desktopEbayOAuthRequests.delete(key);
+      }
+    }
+    for (const [key, record] of listingRecords.entries()) {
+      if (record.shop === normalizedShop) {
+        listingRecords.delete(key);
+      }
+    }
+    for (const [key, record] of exportRecords.entries()) {
+      if (record.shop === normalizedShop) {
+        exportRecords.delete(key);
+      }
+    }
+    await clearPairingRecords(normalizedShop);
+    await clearMemoryEventsForShop(normalizedShop);
     return;
   }
 
-  await db.query("update qst_shopify_sessions set uninstalled_at = now(), updated_at = now() where shop = $1", [normalizedShop]);
-  await db.query("delete from qst_pairing_codes where shop = $1", [normalizedShop]);
-  await db.query("delete from qst_ebay_connections where shop = $1", [normalizedShop]);
-  await db.query("delete from qst_marketplace_settings where shop = $1", [normalizedShop]);
+  const client = await db.connect();
+  try {
+    await client.query("begin");
+    for (const table of [
+      "qst_oauth_states",
+      "qst_shopify_sessions",
+      "qst_pairing_codes",
+      "qst_ebay_connections",
+      "qst_marketplace_settings",
+      "qst_desktop_ebay_oauth",
+      "qst_listing_records",
+      "qst_export_records"
+    ]) {
+      await client.query(`delete from ${table} where shop = $1`, [normalizedShop]);
+    }
+    await client.query("delete from qst_events where details ->> 'shop' = $1", [normalizedShop]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function clearMemoryEventsForShop(shop) {
+  await rewriteMemoryEvents((event) => event.shop !== shop);
+}
+
+async function clearCustomerWebhookData(shop, customerId) {
+  const normalizedShop = normalizeShopDomain(shop);
+  const normalizedCustomerId = safeString(customerId);
+  if (!normalizedShop || !normalizedCustomerId) {
+    return;
+  }
+
+  if (dbReady) {
+    await db.query(
+      "delete from qst_events where details ->> 'shop' = $1 and details #>> '{payload,id}' = $2",
+      [normalizedShop, normalizedCustomerId]
+    );
+    return;
+  }
+
+  await rewriteMemoryEvents((event) => !(
+    event.shop === normalizedShop && safeString(event.payload?.id) === normalizedCustomerId
+  ));
+}
+
+async function rewriteMemoryEvents(retainEvent) {
+  const eventPath = path.join(dataDir, "events.jsonl");
+  let contents;
+  try {
+    contents = await fsp.readFile(eventPath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  const retained = contents
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .filter((line) => {
+      try {
+        return retainEvent(JSON.parse(line));
+      } catch {
+        return true;
+      }
+    });
+
+  if (!retained.length) {
+    await fsp.rm(eventPath, { force: true });
+    return;
+  }
+  await fsp.writeFile(eventPath, `${retained.join("\n")}\n`, "utf8");
 }
 
 function ebayOAuthConfig(request, forcedEnvironment = "") {
@@ -2878,7 +3061,7 @@ function normalizePairingCode(code) {
   return value.length > 4 ? `${value.slice(0, 4)}-${value.slice(4, 8)}` : value;
 }
 
-function summarizeWebhookPayload(buffer) {
+function summarizeWebhookPayload(buffer, topic = "") {
   if (!Buffer.isBuffer(buffer)) {
     return { received: false };
   }
@@ -2888,10 +3071,21 @@ function summarizeWebhookPayload(buffer) {
     return {
       received: true,
       keys: Object.keys(payload).sort(),
-      id: payload.id || payload.shop_id || payload.customer?.id || null
+      id: topic.startsWith("customers/") ? null : payload.id || payload.shop_id || null
     };
   } catch {
     return { received: true, type: "non_json" };
+  }
+}
+
+function customerIdFromWebhookPayload(buffer) {
+  if (!Buffer.isBuffer(buffer)) {
+    return "";
+  }
+  try {
+    return safeString(JSON.parse(buffer.toString("utf8"))?.customer?.id);
+  } catch {
+    return "";
   }
 }
 

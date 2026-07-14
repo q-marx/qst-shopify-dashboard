@@ -108,13 +108,13 @@ export function assessEbayPrep(product) {
     },
     {
       key: "sku",
-      label: "Export SKU source",
+      label: "Export identifier source",
       ok: true,
       detail: missingShopifySkuCount && hasShopifySku
-        ? `Uses Shopify SKUs where present and QST_ export SKUs for ${missingShopifySkuCount} row${missingShopifySkuCount === 1 ? "" : "s"}`
+        ? `Uses Shopify SKUs where present and QST_ export identifiers for ${missingShopifySkuCount} row${missingShopifySkuCount === 1 ? "" : "s"}`
         : hasShopifySku
         ? "Uses Shopify SKUs where available"
-        : "QST generates QST_ export SKUs for tracking; Shopify is not changed"
+        : "QST generates QST_ export identifiers for tracking; Shopify is not changed"
     },
     {
       key: "variant_options",
@@ -151,14 +151,25 @@ export function assessEbayPrep(product) {
   const passed = checks.filter((check) => check.ok).length;
   const score = Math.round((passed / checks.length) * 100);
   const blockers = checks.filter((check) => !check.ok);
+  const hardBlockerKeys = new Set([
+    "title",
+    "description",
+    "images",
+    "price",
+    "variant_options",
+    "variant_limit",
+    "status"
+  ]);
+  const hardBlockers = blockers.filter((check) => hardBlockerKeys.has(check.key));
 
   return {
     checks,
     passed,
     total: checks.length,
     score,
-    state: score >= 85 ? "ready" : score >= 60 ? "review" : "needs-work",
+    state: hardBlockers.length === 0 && score >= 85 ? "ready" : score >= 60 ? "review" : "needs-work",
     blockers,
+    hardBlockers,
     categoryHint,
     imageCount: imageUrls.length,
     inventoryRows: variants.length
@@ -197,10 +208,10 @@ export function assessReadiness(product) {
     },
     {
       key: "sku",
-      label: "Export SKU",
+      label: "Export identifier",
       ok: exportSkuReady,
       detail: missingShopifySkuCount
-        ? `${missingShopifySkuCount} listing row${missingShopifySkuCount === 1 ? "" : "s"} will use QST-generated export SKUs`
+        ? `${missingShopifySkuCount} listing row${missingShopifySkuCount === 1 ? "" : "s"} will use QST-generated export identifiers`
         : "Shopify SKUs are available for export tracking"
     },
     {
@@ -373,7 +384,7 @@ export function buildEbayReviewPlan(products, ebaySettings = {}, draftOverrides 
       mode: "ebay_export_review_plan",
       callsEbayApi: false,
       purpose:
-        "Review Shopify product data, eBay-compatible draft fields, and seller notes before importing a CSV or continuing in QST Desktop. This file does not connect to or publish on eBay.",
+        "Review Shopify product data, eBay preparation fields, and seller notes before adapting the data to an eBay Seller Hub template or continuing in QST Desktop. This file does not connect to or publish on eBay.",
       setup: {
         ready: setupMissing.length === 0,
         missing: setupMissing,
@@ -400,7 +411,7 @@ export function buildTextPack(products, marketplace = "ebay", draftOverrides = {
         `Handle: ${product.handle || "-"}`,
         `Readiness: ${readiness.passed}/${readiness.total} checks`,
         `Price: ${draft.price || "-"}`,
-        `Export SKU: ${draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-"}`,
+        `Export identifier: ${draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-"}`,
         "",
         "Description:",
         draft.description,
@@ -628,7 +639,7 @@ function buildPromoPageHtml(product, draft, imageManifest, marketplace) {
     `<p class="meta">${escapeHtmlText(marketplaceLabel(marketplace))} draft from Shopify product data</p>`,
     `<h1>${title}</h1>`,
     `<p>${description.replace(/\n/g, "<br>")}</p>`,
-    `<p class="meta">Price: ${escapeHtmlText(draft.price || "-")} | Export SKU: ${escapeHtmlText(draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-")}</p>`,
+    `<p class="meta">Price: ${escapeHtmlText(draft.price || "-")} | Export identifier: ${escapeHtmlText(draft.sku || exportSku(product, product.variants?.[0] ?? {}, 0) || "-")}</p>`,
     "</div>",
     `<div class="media">${imageMarkup}</div>`,
     "</section>",
@@ -880,5 +891,6 @@ function escapeHtmlText(value) {
 
 function csvCell(value) {
   const text = String(value ?? "").replace(/\r?\n/g, " ");
-  return `"${text.replace(/"/g, '""')}"`;
+  const safeText = /^[=+\-@]/.test(text.trimStart()) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
 }

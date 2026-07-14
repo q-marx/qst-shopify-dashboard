@@ -31,7 +31,11 @@ const PRODUCTS_QUERY = `
             altText
           }
         }
-        variants(first: 20) {
+        variants(first: 10) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes {
             id
             title
@@ -42,6 +46,30 @@ const PRODUCTS_QUERY = `
               name
               value
             }
+          }
+        }
+      }
+    }
+  }
+`;
+
+const PRODUCT_VARIANTS_QUERY = `
+  query QstProductVariants($id: ID!, $after: String) {
+    product(id: $id) {
+      variants(first: 250, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          title
+          sku
+          price
+          inventoryQuantity
+          selectedOptions {
+            name
+            value
           }
         }
       }
@@ -81,38 +109,83 @@ export async function loadProducts({ demoMode, screenshotMode = false }) {
       };
     }
 
-    throw new Error(
-      "Open this dashboard inside Shopify Admin, or enable VITE_QST_DEMO_MODE for local preview."
-    );
+    throw new Error(import.meta.env.DEV
+      ? "Open this dashboard inside Shopify Admin, or use the local development preview."
+      : "Open this dashboard inside Shopify Admin to load store products securely.");
   }
 
-  const response = await fetch("shopify:admin/api/graphql.json", {
+  const productNodes = await collectConnectionPages(async (after) => {
+    const payload = await shopifyAdminGraphql(PRODUCTS_QUERY, {
+      first: 25,
+      after
+    }, "product");
+    return payload.data?.products;
+  });
+
+  for (const product of productNodes) {
+    const initialVariants = product.variants || { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } };
+    if (!initialVariants.pageInfo?.hasNextPage) {
+      continue;
+    }
+
+    const remainingVariants = await collectConnectionPages(async (after) => {
+      const payload = await shopifyAdminGraphql(PRODUCT_VARIANTS_QUERY, {
+        id: product.id,
+        after
+      }, "variant");
+      return payload.data?.product?.variants;
+    }, initialVariants.pageInfo.endCursor);
+    product.variants.nodes.push(...remainingVariants);
+    product.variants.pageInfo = { hasNextPage: false, endCursor: null };
+  }
+
+  const products = productNodes.map(mapProduct);
+
+  return {
+    source: "shopify",
+    products,
+    pageInfo: { hasNextPage: false, endCursor: null }
+  };
+}
+
+export async function collectConnectionPages(fetchPage, initialAfter = null) {
+  const nodes = [];
+  let after = initialAfter;
+
+  do {
+    const connection = await fetchPage(after);
+    if (!connection) {
+      throw new Error("Shopify returned an incomplete paginated response.");
+    }
+
+    nodes.push(...(connection.nodes || []));
+    if (!connection.pageInfo?.hasNextPage) {
+      return nodes;
+    }
+
+    const nextCursor = connection.pageInfo.endCursor;
+    if (!nextCursor || nextCursor === after) {
+      throw new Error("Shopify pagination did not provide a new cursor.");
+    }
+    after = nextCursor;
+  } while (true);
+}
+
+async function shopifyAdminGraphql(query, variables, resourceLabel) {
+  const response = await fetch("shopify:admin/api/2026-07/graphql.json", {
     method: "POST",
-    body: JSON.stringify({
-      query: PRODUCTS_QUERY,
-      variables: {
-        first: 50,
-        after: null
-      }
-    })
+    body: JSON.stringify({ query, variables })
   });
 
   if (!response.ok) {
-    throw new Error(`Shopify product request failed with ${response.status}.`);
+    throw new Error(`Shopify ${resourceLabel} request failed with ${response.status}.`);
   }
 
   const payload = await response.json();
   if (payload.errors?.length) {
     throw new Error(payload.errors.map((error) => error.message).join(" "));
   }
-
-  const products = payload.data.products.nodes.map(mapProduct);
-
-  return {
-    source: "shopify",
-    products,
-    pageInfo: payload.data.products.pageInfo
-  };
+  return payload;
 }
 
 export async function loadBillingStatus({ demoMode, screenshotMode = false }) {
@@ -135,7 +208,7 @@ export async function loadBillingStatus({ demoMode, screenshotMode = false }) {
     };
   }
 
-  const response = await fetch("shopify:admin/api/graphql.json", {
+  const response = await fetch("shopify:admin/api/2026-07/graphql.json", {
     method: "POST",
     body: JSON.stringify({
       query: BILLING_QUERY
@@ -206,6 +279,9 @@ function mapProduct(product) {
 }
 
 function stripHtml(html) {
+  if (typeof document === "undefined") {
+    return String(html).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
   const div = document.createElement("div");
   div.innerHTML = html;
   return div.textContent || div.innerText || "";

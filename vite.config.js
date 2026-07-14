@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml(html) {
           return html.replace(
             /%VITE_SHOPIFY_API_KEY%/g,
-            env.VITE_SHOPIFY_API_KEY || env.SHOPIFY_API_KEY || "replace_with_shopify_client_id"
+            env.VITE_SHOPIFY_API_KEY || env.SHOPIFY_API_KEY || "f0517dd50928e4546916d0c07b379e87"
           );
         }
       }
@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       "import.meta.env.VITE_SHOPIFY_API_KEY": JSON.stringify(
-        env.VITE_SHOPIFY_API_KEY || env.SHOPIFY_API_KEY || "replace_with_shopify_client_id"
+        env.VITE_SHOPIFY_API_KEY || env.SHOPIFY_API_KEY || "f0517dd50928e4546916d0c07b379e87"
       )
     }
   };

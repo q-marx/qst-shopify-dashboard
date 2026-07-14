@@ -1,8 +1,7 @@
-# Replace the placeholder values with the app details from Shopify Partner Dashboard.
-# This config keeps the embedded dashboard useful without the desktop companion.
+# Default production configuration for QST Listing Workspace.
 
 name = "QST Listing Workspace"
-client_id = "replace_with_shopify_client_id"
+client_id = "f0517dd50928e4546916d0c07b379e87"
 application_url = "https://qst-shopify-dashboard.onrender.com"
 embedded = true
 
@@ -13,6 +12,8 @@ automatically_update_urls_on_dev = false
 
 [access_scopes]
 scopes = "read_products"
+optional_scopes = []
+use_legacy_install_flow = false
 
 [access.admin]
 embedded_app_direct_api_access = true
@@ -25,7 +26,7 @@ redirect_urls = [
 ]
 
 [webhooks]
-api_version = "2026-04"
+api_version = "2026-07"
 
 [[webhooks.subscriptions]]
 topics = ["app/uninstalled"]

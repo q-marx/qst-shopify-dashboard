@@ -207,7 +207,6 @@ const screenshotCatalog = [
 export const screenshotProducts = Array.from({ length: 50 }, (_, index) => {
   const catalogItem = screenshotCatalog[index % screenshotCatalog.length];
   const number = String(index + 1).padStart(2, "0");
-  const reviewProduct = index < 9;
   const title =
     index < screenshotCatalog.length
       ? catalogItem.title
@@ -216,7 +215,7 @@ export const screenshotProducts = Array.from({ length: 50 }, (_, index) => {
     {
       id: `screenshot-variant-${number}-1`,
       title: "Default Title",
-      sku: reviewProduct ? "" : `${catalogItem.skuPrefix}-${number}`,
+      sku: `${catalogItem.skuPrefix}-${number}`,
       price: catalogItem.price,
       inventoryQuantity: 6 + (index % 12),
       selectedOptions: []
