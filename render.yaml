@@ -37,9 +37,9 @@ services:
       - key: QST_SUBSCRIPTION_STATUS
         value: not_checked
       - key: QST_DESKTOP_VERSION
-        value: "1.0.0"
+        value: "1.0.1"
       - key: QST_DESKTOP_DOWNLOAD_URL
-        value: https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.0/QST-Setup-v1.0.exe
+        value: https://github.com/q-marx/qst-shopify-dashboard/releases/download/v1.0.1/QST-Setup-v1.0.1.exe
       - key: QST_DESKTOP_PAIRING_ENABLED
         value: "true"
       - key: QST_PAIRING_TTL_MINUTES
