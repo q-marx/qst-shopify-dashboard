@@ -20,6 +20,7 @@ const port = Number(process.env.PORT || process.env.FRONTEND_PORT || 5173);
 const host = isProduction || process.env.RENDER || process.env.HOST ? "0.0.0.0" : "127.0.0.1";
 const pairingTtlMinutes = Math.max(Number(process.env.QST_PAIRING_TTL_MINUTES || 15), 1);
 const desktopPairingEnabled = envFlag("QST_DESKTOP_PAIRING_ENABLED", false);
+const shopifyApiVersion = safeString(process.env.SHOPIFY_API_VERSION || "2026-07");
 const pairingCodes = new Map();
 const marketplaceSettings = new Map();
 const oauthStates = new Map();
@@ -626,6 +627,22 @@ app.post("/api/desktop/pairing/:code/redeem", async (request, response) => {
   });
 });
 
+app.post("/api/desktop/pairing/revoke", async (request, response) => {
+  const token = bearerToken(request);
+  const context = await requireDesktopPairingContext(request, response);
+  if (!context || !token) {
+    return;
+  }
+
+  await revokePairingRecordByDesktopTokenHash(sha256(token));
+  await recordEvent("desktop_pairing_revoked", {
+    code: context.pairing.code,
+    shop: context.shop,
+    revokedAt: new Date().toISOString()
+  });
+  response.json({ ok: true, status: "revoked", shop: context.shop });
+});
+
 app.post(["/api/desktop/shopify/graphql", "/desktop/shopify/graphql"], async (request, response) => {
   const context = await requireDesktopPairingContext(request, response);
   if (!context) {
@@ -634,7 +651,7 @@ app.post(["/api/desktop/shopify/graphql", "/desktop/shopify/graphql"], async (re
 
   const query = safeString(request.body?.query);
   const variables = request.body?.variables && typeof request.body.variables === "object" ? request.body.variables : {};
-  const apiVersion = safeString(request.body?.api_version || request.body?.apiVersion || "2026-07");
+  const apiVersion = shopifyApiVersion;
 
   if (!query) {
     response.status(400).json({ error: "GraphQL query is required." });
@@ -1071,8 +1088,8 @@ async function loadRemainingShopifyVariants(shop, accessToken, product) {
   throw new Error("Shopify variant pagination ended without a final page.");
 }
 
-async function shopifyGraphql(shop, accessToken, query, variables, apiVersion = "2026-07") {
-  const version = /^20\d{2}-(01|04|07|10)$/.test(apiVersion) ? apiVersion : "2026-07";
+async function shopifyGraphql(shop, accessToken, query, variables, apiVersion = shopifyApiVersion) {
+  const version = /^20\d{2}-(01|04|07|10)$/.test(apiVersion) ? apiVersion : shopifyApiVersion;
   const response = await fetch(`https://${shop}/admin/api/${version}/graphql.json`, {
     method: "POST",
     headers: {
@@ -2909,6 +2926,34 @@ async function claimPairingRecord(code, desktopTokenHash, claimedAt) {
   }
 
   return mapPairingRow(result.rows[0]);
+}
+
+async function revokePairingRecordByDesktopTokenHash(desktopTokenHash) {
+  const tokenHash = safeString(desktopTokenHash);
+  if (!tokenHash) {
+    return false;
+  }
+
+  if (!dbReady) {
+    for (const [code, record] of pairingCodes.entries()) {
+      if (record.status === "claimed" && record.desktopTokenHash === tokenHash) {
+        pairingCodes.set(code, { ...record, status: "revoked", desktopTokenHash: null });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const result = await db.query(
+    `
+      update qst_pairing_codes
+      set status = 'revoked', desktop_token_hash = null
+      where desktop_token_hash = $1
+        and status = 'claimed'
+    `,
+    [tokenHash]
+  );
+  return result.rowCount > 0;
 }
 
 async function clearPairingRecords(shop = "") {

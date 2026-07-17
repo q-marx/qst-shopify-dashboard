@@ -9,6 +9,8 @@ services:
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /healthz
+    domains:
+      - qst.q-mer.ch
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,6 +18,8 @@ services:
         value: "false"
       - key: SHOPIFY_SCOPES
         value: read_products
+      - key: SHOPIFY_API_VERSION
+        value: "2026-07"
       - key: VITE_SHOPIFY_API_KEY
         sync: false
       - key: SHOPIFY_API_SECRET

@@ -171,6 +171,32 @@ test("desktop pairing codes are scoped to the verified shop and can only be rede
 
   const secondRedeem = await postJson(`/api/desktop/pairing/${encodeURIComponent(created.body.code)}/redeem`, {});
   assert.equal(secondRedeem.status, 409);
+
+  const secondPairing = await postJson("/api/desktop/pairing-code", {}, token);
+  assert.equal(secondPairing.status, 201);
+  const secondDesktop = await postJson(
+    `/api/desktop/pairing/${encodeURIComponent(secondPairing.body.code)}/redeem`,
+    {}
+  );
+  assert.equal(secondDesktop.status, 200);
+
+  const revoked = await postJson("/api/desktop/pairing/revoke", {}, redeemed.body.desktopToken);
+  assert.equal(revoked.status, 200);
+  assert.equal(revoked.body.status, "revoked");
+
+  const afterRevoke = await postJson(
+    "/api/desktop/shopify/graphql",
+    { query: "{ shop { name } }", variables: {} },
+    redeemed.body.desktopToken
+  );
+  assert.equal(afterRevoke.status, 401);
+
+  const otherDesktopStillValid = await postJson(
+    "/api/desktop/shopify/graphql",
+    { query: "{ shop { name } }", variables: {} },
+    secondDesktop.body.desktopToken
+  );
+  assert.equal(otherDesktopStillValid.status, 409);
 });
 
 test("Shopify install OAuth uses the whitelisted callback route", async () => {
